@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>재T의 파일방</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fafaf8;--bg2:#f2f1ec;--bg3:#e8e6df;
+  --text:#1c1c1a;--text2:#5a5a56;--text3:#9a9a94;
+  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
+  --accent:#2c5f8a;--accent-bg:#eef4fa;
+  --radius:10px;--radius-lg:14px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#191917;--bg2:#222220;--bg3:#2a2a27;
+    --text:#f0efe8;--text2:#9a9a90;--text3:#5a5a54;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --accent:#5b9fd4;--accent-bg:#1a2430;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* 레이아웃 */
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:0.5px solid var(--border);padding:2rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.main{flex:1;padding:2.5rem 2rem;max-width:800px;}
+
+/* 사이드바 */
+.sidebar-title{padding:0 1.5rem 1.5rem;border-bottom:0.5px solid var(--border);margin-bottom:1rem;}
+.sidebar-brand{font-size:16px;font-weight:600;color:var(--text);}
+.sidebar-sub{font-size:12px;color:var(--text3);margin-top:3px;}
+
+.nav-section{margin-bottom:0.25rem;}
+.nav-section-label{font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;padding:0.75rem 1.5rem 0.4rem;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:0.55rem 1.5rem;font-size:14px;color:var(--text2);cursor:pointer;transition:all 0.15s;border-left:2px solid transparent;}
+.nav-item:hover{background:var(--bg3);color:var(--text);}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);border-left-color:var(--accent);font-weight:500;}
+.nav-icon{font-size:15px;width:18px;text-align:center;}
+
+/* 메인 */
+.page{display:none;}
+.page.active{display:block;}
+
+.page-header{margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border);}
+.page-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.page-desc{font-size:14px;color:var(--text3);}
+
+/* 파일 카드 */
+.file-list{display:flex;flex-direction:column;gap:8px;}
+.file-item{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);transition:all 0.15s;text-decoration:none;color:inherit;}
+.file-item:hover{border-color:var(--border2);background:var(--bg2);}
+.file-icon{font-size:22px;flex-shrink:0;}
+.file-info{flex:1;}
+.file-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px;}
+.file-meta{font-size:12px;color:var(--text3);}
+.file-badge{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--bg2);color:var(--text3);flex-shrink:0;}
+.file-badge.new{background:var(--accent-bg);color:var(--accent);}
+
+/* 공지 카드 */
+.notice-card{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;}
+.notice-card p{font-size:14px;color:var(--accent);line-height:1.7;}
+
+/* 홈 그리드 */
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:2rem;}
+.home-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;cursor:pointer;transition:all 0.15s;}
+.home-card:hover{border-color:var(--border2);background:var(--bg2);}
+.home-card-icon{font-size:28px;margin-bottom:0.75rem;}
+.home-card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.home-card-desc{font-size:12px;color:var(--text3);line-height:1.5;}
+.home-card-count{font-size:11px;color:var(--accent);margin-top:8px;}
+
+/* 빈 상태 */
+.empty{text-align:center;padding:3rem 1rem;color:var(--text3);}
+.empty-icon{font-size:36px;margin-bottom:0.75rem;}
+.empty-text{font-size:14px;}
+
+/* 모바일 */
+@media(max-width:640px){
+  .sidebar{display:none;}
+  .main{padding:1.5rem 1rem;}
+  .mobile-nav{display:flex;overflow-x:auto;gap:8px;padding:1rem;background:var(--bg2);border-bottom:0.5px solid var(--border);-webkit-overflow-scrolling:touch;}
+  .mobile-nav-btn{flex-shrink:0;padding:0.5rem 1rem;border:0.5px solid var(--border);border-radius:99px;font-size:13px;color:var(--text2);cursor:pointer;background:var(--bg);white-space:nowrap;font-family:inherit;}
+  .mobile-nav-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
+}
+@media(min-width:641px){.mobile-nav{display:none;}}
+</style>
+</head>
+<body>
+
+<div class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-btn active" onclick="showPage('home',this)">🏠 홈</button>
+  <button class="mobile-nav-btn" onclick="showPage('grade1',this)">📚 1학년</button>
+  <button class="mobile-nav-btn" onclick="showPage('grade2',this)">📚 2학년</button>
+  <button class="mobile-nav-btn" onclick="showPage('grade3',this)">📚 3학년</button>
+  <button class="mobile-nav-btn" onclick="showPage('material',this)">📄 수업 자료</button>
+  <button class="mobile-nav-btn" onclick="showPage('quiz',this)">✏️ 퀴즈</button>
+  <button class="mobile-nav-btn" onclick="showPage('books',this)">📖 추천 도서</button>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-title">
+      <div class="sidebar-brand">재T의 파일방</div>
+      <div class="sidebar-sub">국어 수업 자료실</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">학년별</div>
+      <div class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span>홈</div>
+      <div class="nav-item" onclick="showPage('grade1',this)"><span class="nav-icon">📚</span>1학년</div>
+      <div class="nav-item" onclick="showPage('grade2',this)"><span class="nav-icon">📚</span>2학년</div>
+      <div class="nav-item" onclick="showPage('grade3',this)"><span class="nav-icon">📚</span>3학년</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-label">종류별</div>
+      <div class="nav-item" onclick="showPage('material',this)"><span class="nav-icon">📄</span>수업 자료</div>
+      <div class="nav-item" onclick="showPage('quiz',this)"><span class="nav-icon">✏️</span>퀴즈</div>
+      <div class="nav-item" onclick="showPage('books',this)"><span class="nav-icon">📖</span>추천 도서</div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- 홈 -->
+    <div id="page-home" class="page active">
+      <div class="page-header">
+        <div class="page-title">재T의 파일방</div>
+        <div class="page-desc">수업 자료, 퀴즈, 추천 도서를 모아뒀습니다.</div>
+      </div>
+      <div class="notice-card">
+        <p>📢 수업 자료는 매일 업로드됩니다. 자주 확인하세요.</p>
+      </div>
+      <div class="home-grid">
+        <div class="home-card" onclick="showPage('grade1',null)">
+          <div class="home-card-icon">📚</div>
+          <div class="home-card-title">1학년</div>
+          <div class="home-card-desc">1학년 수업 자료 모음</div>
+          <div class="home-card-count">파일 0개</div>
+        </div>
+        <div class="home-card" onclick="showPage('grade2',null)">
+          <div class="home-card-icon">📚</div>
+          <div class="home-card-title">2학년</div>
+          <div class="home-card-desc">2학년 수업 자료 모음</div>
+          <div class="home-card-count">파일 0개</div>
+        </div>
+        <div class="home-card" onclick="showPage('grade3',null)">
+          <div class="home-card-icon">📚</div>
+          <div class="home-card-title">3학년</div>
+          <div class="home-card-desc">3학년 수업 자료 모음</div>
+          <div class="home-card-count">파일 0개</div>
+        </div>
+        <div class="home-card" onclick="showPage('material',null)">
+          <div class="home-card-icon">📄</div>
+          <div class="home-card-title">수업 자료</div>
+          <div class="home-card-desc">학년 구분 없이 전체 자료</div>
+          <div class="home-card-count">파일 0개</div>
+        </div>
+        <div class="home-card" onclick="showPage('quiz',null)">
+          <div class="home-card-icon">✏️</div>
+          <div class="home-card-title">퀴즈</div>
+          <div class="home-card-desc">문법 퀴즈 바로 풀기</div>
+          <div class="home-card-count">1개</div>
+        </div>
+        <div class="home-card" onclick="showPage('books',null)">
+          <div class="home-card-icon">📖</div>
+          <div class="home-card-title">추천 도서</div>
+          <div class="home-card-desc">학년별 추천 도서 목록</div>
+          <div class="home-card-count">준비 중</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1학년 -->
+    <div id="page-grade1" class="page">
+      <div class="page-header">
+        <div class="page-title">1학년</div>
+        <div class="page-desc">1학년 수업 자료를 올려두겠습니다.</div>
+      </div>
+      <div class="empty"><div class="empty-icon">📭</div><div class="empty-text">아직 올라온 파일이 없습니다.</div></div>
+    </div>
+
+    <!-- 2학년 -->
+    <div id="page-grade2" class="page">
+      <div class="page-header">
+        <div class="page-title">2학년</div>
+        <div class="page-desc">2학년 수업 자료를 올려두겠습니다.</div>
+      </div>
+      <div class="empty"><div class="empty-icon">📭</div><div class="empty-text">아직 올라온 파일이 없습니다.</div></div>
+    </div>
+
+    <!-- 3학년 -->
+    <div id="page-grade3" class="page">
+      <div class="page-header">
+        <div class="page-title">3학년</div>
+        <div class="page-desc">3학년 수업 자료를 올려두겠습니다.</div>
+      </div>
+      <div class="empty"><div class="empty-icon">📭</div><div class="empty-text">아직 올라온 파일이 없습니다.</div></div>
+    </div>
+
+    <!-- 수업 자료 -->
+    <div id="page-material" class="page">
+      <div class="page-header">
+        <div class="page-title">수업 자료</div>
+        <div class="page-desc">전체 수업 자료 모음입니다. 파일을 클릭하면 다운로드됩니다.</div>
+      </div>
+      <div class="file-list">
+        <a class="file-item" href="files/sample.pdf" download>
+          <div class="file-icon">📄</div>
+          <div class="file-info">
+            <div class="file-name">국어 문법 정리 (예시 파일)</div>
+            <div class="file-meta">2026.06.04 · PDF</div>
+          </div>
+          <div class="file-badge new">NEW</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 퀴즈 -->
+    <div id="page-quiz" class="page">
+      <div class="page-header">
+        <div class="page-title">퀴즈</div>
+        <div class="page-desc">문법 퀴즈를 풀어보세요.</div>
+      </div>
+      <div class="file-list">
+        <a class="file-item" <a class="file-item" href="https://koreantch-stack.github.io/poomsa/" target="_blank">
+          <div class="file-icon">✏️</div>
+          <div class="file-info">
+            <div class="file-name">중학교 국어 문법 퀴즈</div>
+            <div class="file-meta">15문항 · 4지선다 · 즉시 해설</div>
+          </div>
+          <div class="file-badge new">NEW</div>
+        </a>
+      </div>
+    </div>
+
+    <!-- 추천 도서 -->
+    <div id="page-books" class="page">
+      <div class="page-header">
+        <div class="page-title">추천 도서</div>
+        <div class="page-desc">학년별 추천 도서 목록입니다.</div>
+      </div>
+      <div class="empty"><div class="empty-icon">📚</div><div class="empty-text">준비 중입니다.</div></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-btn').forEach(n => n.classList.remove('active'));
+
+  if (el) {
+    el.classList.add('active');
+    const text = el.textContent.trim().replace(/[📚📄✏️📖🏠]/g,'').trim();
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if(n.textContent.trim() === text) n.classList.add('active');
+    });
+  }
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>
