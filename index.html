@@ -50,13 +50,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 .file-badge.new{background:var(--accent-bg);color:var(--accent);}
 .notice-card{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;}
 .notice-card p{font-size:14px;color:var(--accent);line-height:1.7;}
-.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:2rem;}
-.home-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;cursor:pointer;transition:all 0.15s;}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+.home-section-title{font-size:11px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:0.75rem;}
+.home-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer;transition:all 0.15s;}
 .home-card:hover{border-color:var(--border2);background:var(--bg2);}
-.home-card-icon{font-size:28px;margin-bottom:0.75rem;}
-.home-card-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
-.home-card-desc{font-size:12px;color:var(--text3);line-height:1.5;}
-.home-card-count{font-size:11px;color:var(--accent);margin-top:8px;}
+.home-card-icon{font-size:24px;margin-bottom:0.6rem;}
+.home-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.home-card-count{font-size:11px;color:var(--accent);margin-top:6px;}
 .empty{text-align:center;padding:3rem 1rem;color:var(--text3);}
 .empty-icon{font-size:36px;margin-bottom:0.75rem;}
 .empty-text{font-size:14px;}
@@ -78,13 +78,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 
 <div class="mobile-nav">
   <button class="mobile-nav-btn active" onclick="showPage('home',this)">🏠 홈</button>
-  <button class="mobile-nav-btn" onclick="showPage('grade1',this)">📚 1학년</button>
-  <button class="mobile-nav-btn" onclick="showPage('grade2',this)">📚 2학년</button>
-  <button class="mobile-nav-btn" onclick="showPage('grade3',this)">📚 3학년</button>
+  <button class="mobile-nav-btn" onclick="showPage('m1',this)">중1</button>
+  <button class="mobile-nav-btn" onclick="showPage('m2',this)">중2</button>
+  <button class="mobile-nav-btn" onclick="showPage('m3',this)">중3</button>
+  <button class="mobile-nav-btn" onclick="showPage('h1',this)">고1</button>
+  <button class="mobile-nav-btn" onclick="showPage('h2',this)">고2</button>
+  <button class="mobile-nav-btn" onclick="showPage('h3',this)">고3</button>
   <button class="mobile-nav-btn" onclick="showPage('club',this)">🎯 동아리</button>
   <button class="mobile-nav-btn" onclick="showPage('quiz',this)">✏️ 퀴즈</button>
   <button class="mobile-nav-btn" onclick="showPage('books',this)">📖 추천 도서</button>
-  <button class="mobile-nav-btn" onclick="showPage('all',this)">📄 파일만 몰아보기</button>
+  <button class="mobile-nav-btn" onclick="showPage('all',this)">📄 파일 몰아보기</button>
 </div>
 
 <div class="layout">
@@ -96,10 +99,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 
     <div class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span>홈</div>
 
-    <div class="nav-section-label">학년별</div>
-    <div class="nav-item" onclick="showPage('grade1',this)"><span class="nav-icon">📚</span>1학년</div>
-    <div class="nav-item" onclick="showPage('grade2',this)"><span class="nav-icon">📚</span>2학년</div>
-    <div class="nav-item" onclick="showPage('grade3',this)"><span class="nav-icon">📚</span>3학년</div>
+    <div class="nav-section-label">중학교</div>
+    <div class="nav-item" onclick="showPage('m1',this)"><span class="nav-icon">📚</span>1학년</div>
+    <div class="nav-item" onclick="showPage('m2',this)"><span class="nav-icon">📚</span>2학년</div>
+    <div class="nav-item" onclick="showPage('m3',this)"><span class="nav-icon">📚</span>3학년</div>
+
+    <div class="nav-section-label">고등학교</div>
+    <div class="nav-item" onclick="showPage('h1',this)"><span class="nav-icon">📚</span>1학년</div>
+    <div class="nav-item" onclick="showPage('h2',this)"><span class="nav-icon">📚</span>2학년</div>
+    <div class="nav-item" onclick="showPage('h3',this)"><span class="nav-icon">📚</span>3학년</div>
+
     <div class="nav-item" onclick="showPage('club',this)"><span class="nav-icon">🎯</span>동아리</div>
 
     <div class="nav-section-label">기타</div>
@@ -123,35 +132,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
         <div class="page-desc">수업 자료, 퀴즈, 추천 도서를 모아뒀습니다.</div>
       </div>
       <div class="notice-card"><p>📢 수업 자료는 매일 업로드됩니다. 자주 확인하세요.</p></div>
+
+      <div class="home-section-title">중학교</div>
       <div class="home-grid">
-        <div class="home-card" onclick="showPage('grade1',null)"><div class="home-card-icon">📚</div><div class="home-card-title">1학년</div><div class="home-card-desc">1학년 수업 자료</div><div class="home-card-count" id="count-1">파일 0개</div></div>
-        <div class="home-card" onclick="showPage('grade2',null)"><div class="home-card-icon">📚</div><div class="home-card-title">2학년</div><div class="home-card-desc">2학년 수업 자료</div><div class="home-card-count" id="count-2">파일 0개</div></div>
-        <div class="home-card" onclick="showPage('grade3',null)"><div class="home-card-icon">📚</div><div class="home-card-title">3학년</div><div class="home-card-desc">3학년 수업 자료</div><div class="home-card-count" id="count-3">파일 0개</div></div>
-        <div class="home-card" onclick="showPage('club',null)"><div class="home-card-icon">🎯</div><div class="home-card-title">동아리</div><div class="home-card-desc">동아리 자료</div><div class="home-card-count" id="count-club">파일 0개</div></div>
-        <div class="home-card" onclick="showPage('quiz',null)"><div class="home-card-icon">✏️</div><div class="home-card-title">퀴즈</div><div class="home-card-desc">문법 퀴즈 바로 풀기</div><div class="home-card-count">1개</div></div>
-        <div class="home-card" onclick="showPage('books',null)"><div class="home-card-icon">📖</div><div class="home-card-title">추천 도서</div><div class="home-card-desc">학년별 추천 도서</div><div class="home-card-count">준비 중</div></div>
+        <div class="home-card" onclick="showPage('m1',null)"><div class="home-card-icon">📚</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-m1">0개</div></div>
+        <div class="home-card" onclick="showPage('m2',null)"><div class="home-card-icon">📚</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-m2">0개</div></div>
+        <div class="home-card" onclick="showPage('m3',null)"><div class="home-card-icon">📚</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-m3">0개</div></div>
+      </div>
+
+      <div class="home-section-title">고등학교</div>
+      <div class="home-grid">
+        <div class="home-card" onclick="showPage('h1',null)"><div class="home-card-icon">📚</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-h1">0개</div></div>
+        <div class="home-card" onclick="showPage('h2',null)"><div class="home-card-icon">📚</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-h2">0개</div></div>
+        <div class="home-card" onclick="showPage('h3',null)"><div class="home-card-icon">📚</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-h3">0개</div></div>
+      </div>
+
+      <div class="home-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+        <div class="home-card" onclick="showPage('club',null)"><div class="home-card-icon">🎯</div><div class="home-card-title">동아리</div><div class="home-card-count" id="count-club">0개</div></div>
+        <div class="home-card" onclick="showPage('quiz',null)"><div class="home-card-icon">✏️</div><div class="home-card-title">퀴즈</div><div class="home-card-count">1개</div></div>
+        <div class="home-card" onclick="showPage('books',null)"><div class="home-card-icon">📖</div><div class="home-card-title">추천 도서</div><div class="home-card-count">준비 중</div></div>
       </div>
     </div>
 
-    <div id="page-grade1" class="page">
-      <div class="page-header"><div class="page-title">1학년</div><div class="page-desc">1학년 수업 자료입니다.</div></div>
-      <div class="file-list" id="list-grade1"></div>
-    </div>
-
-    <div id="page-grade2" class="page">
-      <div class="page-header"><div class="page-title">2학년</div><div class="page-desc">2학년 수업 자료입니다.</div></div>
-      <div class="file-list" id="list-grade2"></div>
-    </div>
-
-    <div id="page-grade3" class="page">
-      <div class="page-header"><div class="page-title">3학년</div><div class="page-desc">3학년 수업 자료입니다.</div></div>
-      <div class="file-list" id="list-grade3"></div>
-    </div>
-
-    <div id="page-club" class="page">
-      <div class="page-header"><div class="page-title">동아리</div><div class="page-desc">동아리 수업 자료입니다.</div></div>
-      <div class="file-list" id="list-club"></div>
-    </div>
+    <div id="page-m1" class="page"><div class="page-header"><div class="page-title">중학교 1학년</div><div class="page-desc">중학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-m1"></div></div>
+    <div id="page-m2" class="page"><div class="page-header"><div class="page-title">중학교 2학년</div><div class="page-desc">중학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-m2"></div></div>
+    <div id="page-m3" class="page"><div class="page-header"><div class="page-title">중학교 3학년</div><div class="page-desc">중학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-m3"></div></div>
+    <div id="page-h1" class="page"><div class="page-header"><div class="page-title">고등학교 1학년</div><div class="page-desc">고등학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-h1"></div></div>
+    <div id="page-h2" class="page"><div class="page-header"><div class="page-title">고등학교 2학년</div><div class="page-desc">고등학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-h2"></div></div>
+    <div id="page-h3" class="page"><div class="page-header"><div class="page-title">고등학교 3학년</div><div class="page-desc">고등학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-h3"></div></div>
+    <div id="page-club" class="page"><div class="page-header"><div class="page-title">동아리</div><div class="page-desc">동아리 수업 자료입니다.</div></div><div class="file-list" id="list-club"></div></div>
 
     <div id="page-quiz" class="page">
       <div class="page-header"><div class="page-title">퀴즈</div><div class="page-desc">문법 퀴즈를 풀어보세요.</div></div>
@@ -181,6 +190,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 <script>
 let allFiles = [];
 let currentFilter = '전체';
+
+const GRADE_MAP = {
+  '중학교 1학년':'m1','중학교 2학년':'m2','중학교 3학년':'m3',
+  '고등학교 1학년':'h1','고등학교 2학년':'h2','고등학교 3학년':'h3',
+  '동아리':'club'
+};
 
 function getIcon(filename) {
   const ext = (filename.split('.').pop()||'').toLowerCase();
@@ -212,20 +227,13 @@ function empty() {
 }
 
 function renderLists() {
-  const g1 = allFiles.filter(f=>f.grade==='1학년');
-  const g2 = allFiles.filter(f=>f.grade==='2학년');
-  const g3 = allFiles.filter(f=>f.grade==='3학년');
-  const club = allFiles.filter(f=>f.grade==='동아리');
-
-  document.getElementById('list-grade1').innerHTML = g1.length ? g1.map(renderFile).join('') : empty();
-  document.getElementById('list-grade2').innerHTML = g2.length ? g2.map(renderFile).join('') : empty();
-  document.getElementById('list-grade3').innerHTML = g3.length ? g3.map(renderFile).join('') : empty();
-  document.getElementById('list-club').innerHTML = club.length ? club.map(renderFile).join('') : empty();
-
-  document.getElementById('count-1').textContent = '파일 '+g1.length+'개';
-  document.getElementById('count-2').textContent = '파일 '+g2.length+'개';
-  document.getElementById('count-3').textContent = '파일 '+g3.length+'개';
-  document.getElementById('count-club').textContent = '파일 '+club.length+'개';
+  Object.entries(GRADE_MAP).forEach(([grade, id]) => {
+    const list = allFiles.filter(f=>f.grade===grade);
+    const el = document.getElementById('list-'+id);
+    const cnt = document.getElementById('count-'+id);
+    if(el) el.innerHTML = list.length ? list.map(renderFile).join('') : empty();
+    if(cnt) cnt.textContent = list.length+'개';
+  });
 
   const types = ['전체', ...new Set(allFiles.map(f=>f.type))];
   document.getElementById('filter-bar').innerHTML = types.map(t=>
