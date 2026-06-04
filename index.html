@@ -7,71 +7,77 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#fafaf8;--bg2:#f2f1ec;--bg3:#e8e6df;
-  --text:#1c1c1a;--text2:#5a5a56;--text3:#9a9a94;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.15);
-  --accent:#2c5f8a;--accent-bg:#eef4fa;
-  --radius:10px;--radius-lg:14px;
-}
-@media(prefers-color-scheme:dark){
-  :root{
-    --bg:#191917;--bg2:#222220;--bg3:#2a2a27;
-    --text:#f0efe8;--text2:#9a9a90;--text3:#5a5a54;
-    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-    --accent:#5b9fd4;--accent-bg:#1a2430;
-  }
+  --bg:#0f1117;--bg2:#1a1d27;--bg3:#242838;
+  --text:#f0f0f0;--text2:#a0a8c0;--text3:#5a6080;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.15);
+  --accent:#7c6af7;--accent2:#5b9cf6;--accent-bg:rgba(124,106,247,0.12);
+  --green:#3ecf8e;--red:#ff6b6b;
+  --radius:10px;--radius-lg:16px;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 .layout{display:flex;min-height:100vh;}
-.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:0.5px solid var(--border);padding:2rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.main{flex:1;padding:2.5rem 2rem;max-width:800px;}
-.sidebar-title{padding:0 1.5rem 1.5rem;border-bottom:0.5px solid var(--border);margin-bottom:1rem;}
-.sidebar-brand{font-size:16px;font-weight:600;color:var(--text);}
-.sidebar-sub{font-size:12px;color:var(--text3);margin-top:3px;}
-.nav-section-label{font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;padding:0.75rem 1.5rem 0.4rem;}
+
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:0.5px solid var(--border);padding:1.5rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-title{padding:0 1.5rem 1.5rem;border-bottom:0.5px solid var(--border);margin-bottom:0.75rem;}
+.sidebar-brand{font-size:17px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sidebar-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+
+.nav-section-label{font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;padding:1rem 1.5rem 0.35rem;}
 .nav-item{display:flex;align-items:center;gap:10px;padding:0.55rem 1.5rem;font-size:14px;color:var(--text2);cursor:pointer;transition:all 0.15s;border-left:2px solid transparent;}
 .nav-item:hover{background:var(--bg3);color:var(--text);}
 .nav-item.active{background:var(--accent-bg);color:var(--accent);border-left-color:var(--accent);font-weight:500;}
 .nav-icon{font-size:15px;width:18px;text-align:center;}
 .nav-divider{border:none;border-top:0.5px solid var(--border);margin:0.75rem 1.5rem;}
+
+.main{flex:1;padding:2.5rem 2rem;max-width:860px;}
 .page{display:none;}
 .page.active{display:block;}
+
 .page-header{margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border);}
-.page-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.page-title{font-size:24px;font-weight:700;color:var(--text);margin-bottom:4px;}
 .page-desc{font-size:14px;color:var(--text3);}
-.btn-home{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text3);cursor:pointer;margin-bottom:1.25rem;padding:0.4rem 0;border:none;background:none;font-family:inherit;}
-.btn-home:hover{color:var(--text);}
-@media(min-width:641px){.btn-home{display:none;}}
+
+.btn-home{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:1.5rem;padding:0.55rem 1.1rem;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);font-family:inherit;transition:all 0.15s;}
+.btn-home:hover{background:var(--bg3);color:var(--text);}
+
+.hero{background:linear-gradient(135deg,rgba(124,106,247,0.15),rgba(91,156,246,0.1));border:0.5px solid rgba(124,106,247,0.25);border-radius:var(--radius-lg);padding:2rem;margin-bottom:2rem;}
+.hero-title{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem;}
+.hero-desc{font-size:14px;color:var(--text2);line-height:1.7;}
+
+.section-label{font-size:11px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:0.85rem;margin-top:1.75rem;}
+
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:0.5rem;}
+.home-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1rem;cursor:pointer;transition:all 0.2s;text-align:center;}
+.home-card:hover{border-color:var(--accent);background:var(--accent-bg);transform:translateY(-2px);}
+.home-card-icon{font-size:28px;margin-bottom:0.6rem;}
+.home-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.home-card-count{font-size:11px;color:var(--accent);}
+
 .file-list{display:flex;flex-direction:column;gap:8px;}
-.file-item{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);transition:all 0.15s;text-decoration:none;color:inherit;}
-.file-item:hover{border-color:var(--border2);background:var(--bg2);}
-.file-icon{font-size:22px;flex-shrink:0;}
+.file-item{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);transition:all 0.15s;text-decoration:none;color:inherit;}
+.file-item:hover{border-color:var(--accent);background:var(--bg3);}
+.file-icon{font-size:24px;flex-shrink:0;}
 .file-info{flex:1;}
 .file-name{font-size:14px;font-weight:500;color:var(--text);margin-bottom:3px;}
 .file-meta{font-size:12px;color:var(--text3);}
-.file-badge{font-size:11px;padding:3px 8px;border-radius:99px;background:var(--bg2);color:var(--text3);flex-shrink:0;}
-.file-badge.new{background:var(--accent-bg);color:var(--accent);}
-.notice-card{background:var(--accent-bg);border:0.5px solid var(--accent);border-radius:var(--radius);padding:1.25rem;margin-bottom:1.5rem;}
-.notice-card p{font-size:14px;color:var(--accent);line-height:1.7;}
-.home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
-.home-section-title{font-size:11px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:0.75rem;}
-.home-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;cursor:pointer;transition:all 0.15s;}
-.home-card:hover{border-color:var(--border2);background:var(--bg2);}
-.home-card-icon{font-size:24px;margin-bottom:0.6rem;}
-.home-card-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
-.home-card-count{font-size:11px;color:var(--accent);margin-top:6px;}
-.empty{text-align:center;padding:3rem 1rem;color:var(--text3);}
-.empty-icon{font-size:36px;margin-bottom:0.75rem;}
+.file-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:var(--bg3);color:var(--text3);flex-shrink:0;}
+.file-badge.new{background:rgba(62,207,142,0.15);color:var(--green);border:0.5px solid rgba(62,207,142,0.3);}
+
+.empty{text-align:center;padding:4rem 1rem;color:var(--text3);}
+.empty-icon{font-size:40px;margin-bottom:1rem;opacity:0.5;}
 .empty-text{font-size:14px;}
+
 .filter-bar{display:flex;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap;}
-.filter-btn{padding:0.4rem 1rem;border:0.5px solid var(--border);border-radius:99px;font-size:13px;color:var(--text2);cursor:pointer;background:var(--bg);font-family:inherit;transition:all 0.15s;}
+.filter-btn{padding:0.4rem 1rem;border:0.5px solid var(--border);border-radius:99px;font-size:13px;color:var(--text2);cursor:pointer;background:var(--bg2);font-family:inherit;transition:all 0.15s;}
 .filter-btn:hover{border-color:var(--border2);}
 .filter-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
+
 @media(max-width:640px){
   .sidebar{display:none;}
-  .main{padding:1.5rem 1rem;}
-  .mobile-nav{display:flex;overflow-x:auto;gap:8px;padding:1rem;background:var(--bg2);border-bottom:0.5px solid var(--border);-webkit-overflow-scrolling:touch;}
-  .mobile-nav-btn{flex-shrink:0;padding:0.5rem 1rem;border:0.5px solid var(--border);border-radius:99px;font-size:13px;color:var(--text2);cursor:pointer;background:var(--bg);white-space:nowrap;font-family:inherit;}
+  .main{padding:1.25rem 1rem;}
+  .mobile-nav{display:flex;overflow-x:auto;gap:8px;padding:0.85rem 1rem;background:var(--bg2);border-bottom:0.5px solid var(--border);-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .mobile-nav::-webkit-scrollbar{display:none;}
+  .mobile-nav-btn{flex-shrink:0;padding:0.5rem 1rem;border:0.5px solid var(--border);border-radius:99px;font-size:13px;color:var(--text2);cursor:pointer;background:var(--bg);white-space:nowrap;font-family:inherit;transition:all 0.15s;}
   .mobile-nav-btn.active{background:var(--accent-bg);color:var(--accent);border-color:var(--accent);}
 }
 @media(min-width:641px){.mobile-nav{display:none;}}
@@ -99,28 +105,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
       <div class="sidebar-brand">재T의 파일방</div>
       <div class="sidebar-sub">국어 수업 자료실</div>
     </div>
-
     <div class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span>홈</div>
-
     <div class="nav-section-label">중학교</div>
     <div class="nav-item" onclick="showPage('m1',this)"><span class="nav-icon">📚</span>1학년</div>
     <div class="nav-item" onclick="showPage('m2',this)"><span class="nav-icon">📚</span>2학년</div>
     <div class="nav-item" onclick="showPage('m3',this)"><span class="nav-icon">📚</span>3학년</div>
-
     <div class="nav-section-label">고등학교</div>
     <div class="nav-item" onclick="showPage('h1',this)"><span class="nav-icon">📚</span>1학년</div>
     <div class="nav-item" onclick="showPage('h2',this)"><span class="nav-icon">📚</span>2학년</div>
     <div class="nav-item" onclick="showPage('h3',this)"><span class="nav-icon">📚</span>3학년</div>
-
     <div class="nav-item" onclick="showPage('club',this)"><span class="nav-icon">🎯</span>동아리</div>
-
     <div class="nav-section-label">기타</div>
     <div class="nav-item" onclick="showPage('quiz',this)"><span class="nav-icon">✏️</span>퀴즈</div>
     <div class="nav-item" onclick="showPage('books',this)"><span class="nav-icon">📖</span>추천 도서</div>
-
     <hr class="nav-divider">
     <div class="nav-item" onclick="showPage('all',this)"><span class="nav-icon">📄</span>파일만 몰아보기</div>
-
     <hr class="nav-divider">
     <div class="nav-section-label">외부 링크</div>
     <a class="nav-item" href="https://blog.naver.com/jayjob84" target="_blank" style="text-decoration:none;"><span class="nav-icon">📝</span>재T의 블로그</a>
@@ -130,27 +129,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
   <main class="main">
 
     <div id="page-home" class="page active">
-      <div class="page-header">
-        <div class="page-title">재T의 파일방</div>
-        <div class="page-desc">수업 자료, 퀴즈, 추천 도서를 모아뒀습니다.</div>
+      <div class="hero">
+        <div class="hero-title">재T의 파일방 📂</div>
+        <div class="hero-desc">수업 자료는 매일 업로드됩니다. 학년을 선택해 자료를 확인하세요.</div>
       </div>
-      <div class="notice-card"><p>📢 수업 자료는 매일 업로드됩니다. 자주 확인하세요.</p></div>
-
-      <div class="home-section-title">중학교</div>
+      <div class="section-label">중학교</div>
       <div class="home-grid">
-        <div class="home-card" onclick="showPage('m1',null)"><div class="home-card-icon">📚</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-m1">0개</div></div>
-        <div class="home-card" onclick="showPage('m2',null)"><div class="home-card-icon">📚</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-m2">0개</div></div>
-        <div class="home-card" onclick="showPage('m3',null)"><div class="home-card-icon">📚</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-m3">0개</div></div>
+        <div class="home-card" onclick="showPage('m1',null)"><div class="home-card-icon">📗</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-m1">0개</div></div>
+        <div class="home-card" onclick="showPage('m2',null)"><div class="home-card-icon">📘</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-m2">0개</div></div>
+        <div class="home-card" onclick="showPage('m3',null)"><div class="home-card-icon">📙</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-m3">0개</div></div>
       </div>
-
-      <div class="home-section-title">고등학교</div>
+      <div class="section-label">고등학교</div>
       <div class="home-grid">
-        <div class="home-card" onclick="showPage('h1',null)"><div class="home-card-icon">📚</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-h1">0개</div></div>
-        <div class="home-card" onclick="showPage('h2',null)"><div class="home-card-icon">📚</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-h2">0개</div></div>
-        <div class="home-card" onclick="showPage('h3',null)"><div class="home-card-icon">📚</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-h3">0개</div></div>
+        <div class="home-card" onclick="showPage('h1',null)"><div class="home-card-icon">📗</div><div class="home-card-title">1학년</div><div class="home-card-count" id="count-h1">0개</div></div>
+        <div class="home-card" onclick="showPage('h2',null)"><div class="home-card-icon">📘</div><div class="home-card-title">2학년</div><div class="home-card-count" id="count-h2">0개</div></div>
+        <div class="home-card" onclick="showPage('h3',null)"><div class="home-card-icon">📙</div><div class="home-card-title">3학년</div><div class="home-card-count" id="count-h3">0개</div></div>
       </div>
-
-      <div class="home-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+      <div class="section-label">기타</div>
+      <div class="home-grid">
         <div class="home-card" onclick="showPage('club',null)"><div class="home-card-icon">🎯</div><div class="home-card-title">동아리</div><div class="home-card-count" id="count-club">0개</div></div>
         <div class="home-card" onclick="showPage('quiz',null)"><div class="home-card-icon">✏️</div><div class="home-card-title">퀴즈</div><div class="home-card-count">1개</div></div>
         <div class="home-card" onclick="showPage('books',null)"><div class="home-card-icon">📖</div><div class="home-card-title">추천 도서</div><div class="home-card-count">준비 중</div></div>
@@ -166,6 +162,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
     <div id="page-club" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">동아리</div><div class="page-desc">동아리 수업 자료입니다.</div></div><div class="file-list" id="list-club"></div></div>
 
     <div id="page-quiz" class="page">
+      <button class="btn-home" onclick="showPage('home',null)">← 홈으로</button>
       <div class="page-header"><div class="page-title">퀴즈</div><div class="page-desc">문법 퀴즈를 풀어보세요.</div></div>
       <div class="file-list">
         <a class="file-item" href="https://koreantch-stack.github.io/poomsa/" target="_blank">
@@ -177,11 +174,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
     </div>
 
     <div id="page-books" class="page">
+      <button class="btn-home" onclick="showPage('home',null)">← 홈으로</button>
       <div class="page-header"><div class="page-title">추천 도서</div><div class="page-desc">학년별 추천 도서 목록입니다.</div></div>
       <div class="empty"><div class="empty-icon">📚</div><div class="empty-text">준비 중입니다.</div></div>
     </div>
 
     <div id="page-all" class="page">
+      <button class="btn-home" onclick="showPage('home',null)">← 홈으로</button>
       <div class="page-header"><div class="page-title">파일만 몰아보기</div><div class="page-desc">전체 파일 목록입니다. 클릭하면 다운로드됩니다.</div></div>
       <div class="filter-bar" id="filter-bar"></div>
       <div class="file-list" id="list-all"></div>
@@ -191,79 +190,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 </div>
 
 <script>
-let allFiles = [];
-let currentFilter = '전체';
+let allFiles=[];
+let currentFilter='전체';
+const GRADE_MAP={'중학교 1학년':'m1','중학교 2학년':'m2','중학교 3학년':'m3','고등학교 1학년':'h1','고등학교 2학년':'h2','고등학교 3학년':'h3','동아리':'club'};
 
-const GRADE_MAP = {
-  '중학교 1학년':'m1','중학교 2학년':'m2','중학교 3학년':'m3',
-  '고등학교 1학년':'h1','고등학교 2학년':'h2','고등학교 3학년':'h3',
-  '동아리':'club'
-};
+function getIcon(f){const e=(f.split('.').pop()||'').toLowerCase();if(e==='pdf')return'📄';if(e==='hwp'||e==='hwpx')return'📝';if(e==='ppt'||e==='pptx')return'📊';if(e==='doc'||e==='docx')return'📃';if(e==='jpg'||e==='png'||e==='jpeg')return'🖼️';return'📎';}
 
-function getIcon(filename) {
-  const ext = (filename.split('.').pop()||'').toLowerCase();
-  if(ext==='pdf') return '📄';
-  if(ext==='hwp'||ext==='hwpx') return '📝';
-  if(ext==='ppt'||ext==='pptx') return '📊';
-  if(ext==='doc'||ext==='docx') return '📃';
-  if(ext==='jpg'||ext==='png'||ext==='jpeg') return '🖼️';
-  return '📎';
+function isNew(d){const p=d.split('.');const dt=new Date(p[0],p[1]-1,p[2]);return(new Date()-dt)<7*24*60*60*1000;}
+
+function renderFile(f){
+  const badge=isNew(f.date)?'<div class="file-badge new">NEW</div>':'<div class="file-badge">'+f.date+'</div>';
+  return`<a class="file-item" href="${f.file}" download><div class="file-icon">${getIcon(f.file)}</div><div class="file-info"><div class="file-name">${f.name}</div><div class="file-meta">${f.grade} · ${f.type} · ${f.date}</div></div>${badge}</a>`;
 }
 
-function isNew(dateStr) {
-  const parts = dateStr.split('.');
-  const d = new Date(parts[0], parts[1]-1, parts[2]);
-  return (new Date() - d) < 7 * 24 * 60 * 60 * 1000;
-}
+function empty(){return'<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">아직 올라온 파일이 없습니다.</div></div>';}
 
-function renderFile(f) {
-  const badge = isNew(f.date) ? '<div class="file-badge new">NEW</div>' : '<div class="file-badge">'+f.date+'</div>';
-  return `<a class="file-item" href="${f.file}" download>
-    <div class="file-icon">${getIcon(f.file)}</div>
-    <div class="file-info"><div class="file-name">${f.name}</div><div class="file-meta">${f.grade} · ${f.type} · ${f.date}</div></div>
-    ${badge}
-  </a>`;
-}
-
-function empty() {
-  return '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">아직 올라온 파일이 없습니다.</div></div>';
-}
-
-function renderLists() {
-  Object.entries(GRADE_MAP).forEach(([grade, id]) => {
-    const list = allFiles.filter(f=>f.grade===grade);
-    const el = document.getElementById('list-'+id);
-    const cnt = document.getElementById('count-'+id);
-    if(el) el.innerHTML = list.length ? list.map(renderFile).join('') : empty();
-    if(cnt) cnt.textContent = list.length+'개';
+function renderLists(){
+  Object.entries(GRADE_MAP).forEach(([grade,id])=>{
+    const list=allFiles.filter(f=>f.grade===grade);
+    const el=document.getElementById('list-'+id);
+    const cnt=document.getElementById('count-'+id);
+    if(el)el.innerHTML=list.length?list.map(renderFile).join(''):empty();
+    if(cnt)cnt.textContent=list.length+'개';
   });
-
-  const types = ['전체', ...new Set(allFiles.map(f=>f.type))];
-  document.getElementById('filter-bar').innerHTML = types.map(t=>
-    `<button class="filter-btn${t===currentFilter?' active':''}" onclick="setFilter('${t}')">${t}</button>`
-  ).join('');
-
-  const filtered = currentFilter==='전체' ? allFiles : allFiles.filter(f=>f.type===currentFilter);
-  document.getElementById('list-all').innerHTML = filtered.length ? filtered.map(renderFile).join('') : empty();
+  const types=['전체',...new Set(allFiles.map(f=>f.type))];
+  document.getElementById('filter-bar').innerHTML=types.map(t=>`<button class="filter-btn${t===currentFilter?' active':''}" onclick="setFilter('${t}')">${t}</button>`).join('');
+  const filtered=currentFilter==='전체'?allFiles:allFiles.filter(f=>f.type===currentFilter);
+  document.getElementById('list-all').innerHTML=filtered.length?filtered.map(renderFile).join(''):empty();
 }
 
-function setFilter(type) {
-  currentFilter = type;
-  renderLists();
-}
+function setFilter(t){currentFilter=t;renderLists();}
 
-function showPage(id, el) {
+function showPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  document.querySelectorAll('.nav-item, .mobile-nav-btn').forEach(n=>n.classList.remove('active'));
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.nav-item,.mobile-nav-btn').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
   window.scrollTo(0,0);
 }
 
-fetch('files.json')
-  .then(r=>r.json())
-  .then(data=>{ allFiles=data; renderLists(); })
-  .catch(()=>{ renderLists(); });
+fetch('files.json').then(r=>r.json()).then(d=>{allFiles=d;renderLists();}).catch(()=>renderLists());
 </script>
 </body>
 </html>
