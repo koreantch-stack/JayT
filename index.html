@@ -39,6 +39,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
 .page-header{margin-bottom:2rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--border);}
 .page-title{font-size:22px;font-weight:600;color:var(--text);margin-bottom:4px;}
 .page-desc{font-size:14px;color:var(--text3);}
+.btn-home{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text3);cursor:pointer;margin-bottom:1.25rem;padding:0.4rem 0;border:none;background:none;font-family:inherit;}
+.btn-home:hover{color:var(--text);}
+@media(min-width:641px){.btn-home{display:none;}}
 .file-list{display:flex;flex-direction:column;gap:8px;}
 .file-item{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);transition:all 0.15s;text-decoration:none;color:inherit;}
 .file-item:hover{border-color:var(--border2);background:var(--bg2);}
@@ -154,13 +157,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic','Ap
       </div>
     </div>
 
-    <div id="page-m1" class="page"><div class="page-header"><div class="page-title">중학교 1학년</div><div class="page-desc">중학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-m1"></div></div>
-    <div id="page-m2" class="page"><div class="page-header"><div class="page-title">중학교 2학년</div><div class="page-desc">중학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-m2"></div></div>
-    <div id="page-m3" class="page"><div class="page-header"><div class="page-title">중학교 3학년</div><div class="page-desc">중학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-m3"></div></div>
-    <div id="page-h1" class="page"><div class="page-header"><div class="page-title">고등학교 1학년</div><div class="page-desc">고등학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-h1"></div></div>
-    <div id="page-h2" class="page"><div class="page-header"><div class="page-title">고등학교 2학년</div><div class="page-desc">고등학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-h2"></div></div>
-    <div id="page-h3" class="page"><div class="page-header"><div class="page-title">고등학교 3학년</div><div class="page-desc">고등학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-h3"></div></div>
-    <div id="page-club" class="page"><div class="page-header"><div class="page-title">동아리</div><div class="page-desc">동아리 수업 자료입니다.</div></div><div class="file-list" id="list-club"></div></div>
+    <div id="page-m1" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">중학교 1학년</div><div class="page-desc">중학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-m1"></div></div>
+    <div id="page-m2" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">중학교 2학년</div><div class="page-desc">중학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-m2"></div></div>
+    <div id="page-m3" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">중학교 3학년</div><div class="page-desc">중학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-m3"></div></div>
+    <div id="page-h1" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">고등학교 1학년</div><div class="page-desc">고등학교 1학년 수업 자료입니다.</div></div><div class="file-list" id="list-h1"></div></div>
+    <div id="page-h2" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">고등학교 2학년</div><div class="page-desc">고등학교 2학년 수업 자료입니다.</div></div><div class="file-list" id="list-h2"></div></div>
+    <div id="page-h3" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">고등학교 3학년</div><div class="page-desc">고등학교 3학년 수업 자료입니다.</div></div><div class="file-list" id="list-h3"></div></div>
+    <div id="page-club" class="page"><button class="btn-home" onclick="showPage('home',null)">← 홈으로</button><div class="page-header"><div class="page-title">동아리</div><div class="page-desc">동아리 수업 자료입니다.</div></div><div class="file-list" id="list-club"></div></div>
 
     <div id="page-quiz" class="page">
       <div class="page-header"><div class="page-title">퀴즈</div><div class="page-desc">문법 퀴즈를 풀어보세요.</div></div>
