@@ -4,158 +4,440 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>국어사전 테스트</title>
+<title>표준국어대사전</title>
 
 <style>
-body {
-    margin: 0;
-    padding: 30px;
-    font-family: Arial, sans-serif;
-    background: #f5f5f5;
+* {
+    box-sizing: border-box;
 }
 
-.box {
-    max-width: 700px;
-    margin: auto;
+body {
+    margin: 0;
+    background: #f4f5f7;
+    font-family: Arial, "Noto Sans KR", sans-serif;
+    color: #222;
+}
+
+.container {
+    max-width: 850px;
+    margin: 40px auto;
     background: white;
-    padding: 30px;
+    padding: 35px;
     border-radius: 20px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.08);
 }
 
 h1 {
     margin-top: 0;
+    font-size: 32px;
 }
 
-input {
-    width: 70%;
-    padding: 14px;
-    font-size: 16px;
+.search-box {
+    display: flex;
+    gap: 10px;
+    margin: 25px 0;
 }
 
-button {
-    padding: 14px 20px;
-    font-size: 16px;
+.search-box input {
+    flex: 1;
+    height: 55px;
+    padding: 0 18px;
+    font-size: 18px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+}
+
+.search-box button {
+    width: 100px;
+    border: none;
+    border-radius: 10px;
+    background: #5b5bd6;
+    color: white;
+    font-size: 17px;
     cursor: pointer;
 }
 
-#result {
-    margin-top: 25px;
-    line-height: 1.8;
+.search-box button:hover {
+    background: #4646bd;
+}
+
+.status {
+    margin: 20px 0;
+    color: #666;
+}
+
+.result {
+    border-top: 1px solid #ddd;
+    padding: 25px 5px;
+}
+
+.word {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+}
+
+.info {
+    margin-top: 8px;
+    color: #666;
+}
+
+.definition {
+    margin-top: 20px;
+    padding: 18px;
+    background: #f7f7fb;
+    border-radius: 12px;
+}
+
+.definition-number {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.examples {
+    margin-top: 15px;
+}
+
+.example {
+    margin-top: 8px;
+    padding-left: 15px;
+    color: #555;
+}
+
+.error {
+    padding: 20px;
+    background: #fff1f1;
+    color: #c62828;
+    border-radius: 10px;
+}
+
+@media (max-width: 600px) {
+    .container {
+        margin: 0;
+        min-height: 100vh;
+        border-radius: 0;
+        padding: 25px 18px;
+    }
+
+    .search-box {
+        flex-direction: column;
+    }
+
+    .search-box button {
+        width: 100%;
+        height: 50px;
+    }
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="box">
+<div class="container">
 
-<h1>📖 표준국어대사전</h1>
+    <h1>📖 표준국어대사전</h1>
 
-<input
-    id="word"
-    type="text"
-    placeholder="단어를 입력하세요"
->
+    <div class="search-box">
+        <input
+            id="searchInput"
+            type="text"
+            placeholder="검색할 단어를 입력하세요"
+            autocomplete="off"
+        >
+        <button onclick="searchWord()">검색</button>
+    </div>
 
-<button onclick="searchWord()">
-검색
-</button>
+    <div id="status" class="status">
+        단어를 입력하고 검색하세요.
+    </div>
 
-<div id="result">
-검색 결과가 여기에 표시됩니다.
-</div>
+    <div id="results"></div>
 
 </div>
 
 
 <script>
 
-const API_KEY =
-"F189E2B227CC59D32D9DB4E8AD8DF289";
-
 const API_URL =
-"https://stdict.korean.go.kr/api/search.do";
+"https://script.google.com/macros/s/AKfycbyRXJ3rSPyojX89_cVQGm1U74jiJQMEq-y60SwENydwGTmqNibUu9FgCs1k4mbLrIKV/exec";
 
 
-async function searchWord() {
+function searchWord() {
 
     const word =
-        document.getElementById("word").value.trim();
-
-    const result =
-        document.getElementById("result");
-
+        document.getElementById("searchInput").value.trim();
 
     if (!word) {
-
-        result.innerHTML =
+        document.getElementById("status").textContent =
             "검색할 단어를 입력하세요.";
+        return;
+    }
+
+    document.getElementById("status").textContent =
+        "'" + word + "' 검색 중...";
+
+    document.getElementById("results").innerHTML = "";
+
+    const callbackName =
+        "dictionaryCallback_" + Date.now();
+
+    window[callbackName] = function(data) {
+
+        try {
+            displayResults(data);
+        } finally {
+            delete window[callbackName];
+
+            const script =
+                document.getElementById(callbackName);
+
+            if (script) {
+                script.remove();
+            }
+        }
+
+    };
+
+    const script = document.createElement("script");
+
+    script.id = callbackName;
+
+    script.src =
+        API_URL +
+        "?q=" + encodeURIComponent(word) +
+        "&callback=" + callbackName;
+
+    script.onerror = function() {
+
+        document.getElementById("status").textContent =
+            "";
+
+        document.getElementById("results").innerHTML =
+            '<div class="error">사전 서버에 연결하지 못했습니다.</div>';
+
+        delete window[callbackName];
+
+        script.remove();
+    };
+
+    document.body.appendChild(script);
+}
+
+
+function displayResults(data) {
+
+    const results =
+        document.getElementById("results");
+
+    const status =
+        document.getElementById("status");
+
+    results.innerHTML = "";
+
+    if (!data) {
+
+        status.textContent = "";
+
+        results.innerHTML =
+            '<div class="error">검색 결과가 없습니다.</div>';
 
         return;
-
     }
 
+    if (data.error) {
 
-    result.innerHTML =
-        "검색 중입니다...";
+        status.textContent = "";
 
+        results.innerHTML =
+            '<div class="error">' +
+            escapeHtml(data.error) +
+            '</div>';
 
-    const url =
-        API_URL
-        + "?key="
-        + encodeURIComponent(API_KEY)
-        + "&q="
-        + encodeURIComponent(word)
-        + "&req_type=json"
-        + "&start=1"
-        + "&num=10";
-
-
-    try {
-
-        const response =
-            await fetch(url);
-
-
-        const text =
-            await response.text();
-
-
-        console.log(text);
-
-
-        result.innerHTML = `
-            <h3>API 응답</h3>
-            <pre style="
-                white-space:pre-wrap;
-                word-break:break-all;
-            ">${escapeHTML(text)}</pre>
-        `;
-
-
-    } catch(error) {
-
-        result.innerHTML = `
-            <h3>오류</h3>
-            <p>${escapeHTML(error.message)}</p>
-        `;
-
+        return;
     }
+
+    /*
+     * 표준국어대사전 JSON 구조에 맞춰
+     * channel.item을 검색 결과로 사용합니다.
+     */
+
+    const items =
+        data.channel &&
+        data.channel.item
+            ? data.channel.item
+            : [];
+
+    if (!Array.isArray(items)) {
+
+        status.textContent = "";
+
+        results.innerHTML =
+            '<div class="error">검색 결과를 읽을 수 없습니다.</div>';
+
+        return;
+    }
+
+    if (items.length === 0) {
+
+        status.textContent =
+            "검색 결과가 없습니다.";
+
+        results.innerHTML =
+            '<div class="error">' +
+            '표준국어대사전에서 해당 단어를 찾지 못했습니다.' +
+            '</div>';
+
+        return;
+    }
+
+    status.textContent =
+        "검색 결과 " + items.length + "건";
+
+    items.forEach(function(item) {
+
+        const result =
+            document.createElement("div");
+
+        result.className = "result";
+
+        const wordInfo =
+            item.word_info || {};
+
+        const word =
+            wordInfo.word || "";
+
+        const wordUnit =
+            wordInfo.word_unit || "";
+
+        const wordType =
+            wordInfo.word_type || "";
+
+        let html = "";
+
+        html +=
+            '<div class="word">' +
+            escapeHtml(word) +
+            '</div>';
+
+        html +=
+            '<div class="info">' +
+            escapeHtml(wordUnit);
+
+        if (wordType) {
+            html +=
+                " · " +
+                escapeHtml(wordType);
+        }
+
+        html += "</div>";
+
+        const posInfo =
+            item.pos_info || {};
+
+        const pos =
+            posInfo.pos || "";
+
+        if (pos) {
+
+            html +=
+                '<div class="info">품사: ' +
+                escapeHtml(pos) +
+                '</div>';
+        }
+
+        const senses =
+            getArray(
+                posInfo.comm_pattern_info &&
+                posInfo.comm_pattern_info.sense_info
+            );
+
+        senses.forEach(function(sense, index) {
+
+            const definition =
+                sense.definition || "";
+
+            html +=
+                '<div class="definition">' +
+                '<span class="definition-number">' +
+                (index + 1) +
+                ".</span>" +
+                escapeHtml(definition);
+
+            const examples =
+                getArray(sense.example_info);
+
+            if (examples.length > 0) {
+
+                html +=
+                    '<div class="examples">' +
+                    '<strong>용례</strong>';
+
+                examples.forEach(function(example) {
+
+                    if (example.example) {
+
+                        html +=
+                            '<div class="example">• ' +
+                            escapeHtml(example.example) +
+                            '</div>';
+                    }
+
+                });
+
+                html += "</div>";
+            }
+
+            html += "</div>";
+
+        });
+
+        result.innerHTML = html;
+
+        results.appendChild(result);
+
+    });
 
 }
 
 
-function escapeHTML(text) {
+function getArray(value) {
 
-    return String(text)
+    if (!value) {
+        return [];
+    }
+
+    return Array.isArray(value)
+        ? value
+        : [value];
+}
+
+
+function escapeHtml(value) {
+
+    if (value === null ||
+        value === undefined) {
+
+        return "";
+    }
+
+    return String(value)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-
 }
+
+
+document
+    .getElementById("searchInput")
+    .addEventListener("keydown", function(event) {
+
+        if (event.key === "Enter") {
+            searchWord();
+        }
+
+    });
 
 </script>
 
