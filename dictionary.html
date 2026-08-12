@@ -7,6 +7,7 @@
 <title>표준국어대사전</title>
 
 <style>
+
 * {
     box-sizing: border-box;
 }
@@ -25,35 +26,39 @@ body {
 
 .container {
     width: min(800px, 94%);
-    margin: 0 auto;
-    padding: 30px 0 50px;
+    margin: auto;
+    padding: 25px 0 50px;
 }
+
+/* 상단 */
 
 .header {
     background: linear-gradient(135deg, #2563eb, #4f46e5);
     color: white;
     border-radius: 22px;
-    padding: 30px 25px;
-    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.2);
+    padding: 28px 22px;
+    box-shadow: 0 8px 25px rgba(37,99,235,.2);
 }
 
 .header h1 {
     margin: 0;
-    font-size: 30px;
+    font-size: 29px;
 }
 
 .header p {
-    margin: 8px 0 22px;
-    font-size: 14px;
+    margin: 8px 0 20px;
+    font-size: 13px;
     color: #dbeafe;
 }
 
-.search {
+/* 검색 */
+
+.search-box {
     display: flex;
     gap: 8px;
 }
 
-.search input {
+.search-box input {
     flex: 1;
     min-width: 0;
     border: none;
@@ -63,10 +68,10 @@ body {
     outline: none;
 }
 
-.search button {
+.search-box button {
     border: none;
     border-radius: 13px;
-    padding: 0 22px;
+    padding: 0 20px;
     background: #111827;
     color: white;
     font-size: 15px;
@@ -74,25 +79,37 @@ body {
     cursor: pointer;
 }
 
-.status {
-    margin-top: 12px;
-    font-size: 13px;
-    color: #dbeafe;
-    min-height: 18px;
+.search-box button:active {
+    transform: scale(.97);
 }
 
-.result {
+.status {
+    margin-top: 12px;
+    font-size: 12px;
+    min-height: 18px;
+    color: #dbeafe;
+}
+
+/* 결과 */
+
+.result-card {
     background: white;
-    margin-top: 15px;
+    margin-top: 14px;
     padding: 22px;
     border-radius: 18px;
-    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 4px 18px rgba(15,23,42,.08);
 }
 
 .word {
-    font-size: 28px;
+    font-size: 27px;
     font-weight: 900;
     color: #111827;
+}
+
+.word-no {
+    color: #64748b;
+    font-size: 13px;
+    margin-left: 5px;
 }
 
 .pos {
@@ -106,24 +123,48 @@ body {
     font-weight: bold;
 }
 
+.origin {
+    margin-top: 7px;
+    color: #64748b;
+    font-size: 12px;
+}
+
 .meaning {
-    margin-top: 15px;
-    font-size: 17px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.meaning-number {
+    font-weight: bold;
+    color: #4f46e5;
+    margin-right: 5px;
+}
+
+.definition {
+    font-size: 16px;
     line-height: 1.7;
 }
 
-.example {
-    margin-top: 15px;
-    padding: 12px;
-    border-left: 4px solid #6366f1;
-    background: #f8fafc;
-    line-height: 1.6;
-    color: #475569;
+.category {
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 11px;
 }
 
-.detail {
-    margin-top: 15px;
-    padding: 11px 14px;
+.example {
+    margin-top: 12px;
+    padding: 11px 13px;
+    background: #f8fafc;
+    border-left: 4px solid #6366f1;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.detail-button {
+    margin-top: 17px;
+    padding: 11px 15px;
     border: none;
     border-radius: 10px;
     background: #16a34a;
@@ -133,9 +174,12 @@ body {
 }
 
 .empty {
+    background: white;
+    margin-top: 14px;
+    padding: 35px 20px;
+    border-radius: 18px;
     text-align: center;
     color: #64748b;
-    padding: 30px;
 }
 
 .info {
@@ -144,11 +188,13 @@ body {
     background: white;
     border-radius: 15px;
     color: #64748b;
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.6;
 }
 
-@media(max-width:500px) {
+/* 모바일 */
+
+@media (max-width: 500px) {
 
     .container {
         width: 94%;
@@ -163,20 +209,27 @@ body {
         font-size: 25px;
     }
 
-    .search input {
+    .search-box input {
         font-size: 15px;
     }
 
-    .search button {
+    .search-box button {
         padding: 0 15px;
     }
 
     .word {
         font-size: 24px;
     }
+
+    .definition {
+        font-size: 15px;
+    }
+
 }
+
 </style>
 </head>
+
 
 <body>
 
@@ -187,15 +240,16 @@ body {
         <h1>📖 표준국어대사전</h1>
 
         <p>
-            국립국어원 표준국어대사전
+            국립국어원 표준국어대사전 실시간 검색
         </p>
 
-        <div class="search">
+        <div class="search-box">
 
             <input
                 id="searchInput"
                 type="text"
                 placeholder="검색할 단어를 입력하세요"
+                autocomplete="off"
             >
 
             <button onclick="searchWord()">
@@ -204,7 +258,10 @@ body {
 
         </div>
 
-        <div id="status" class="status"></div>
+        <div
+            id="status"
+            class="status">
+        </div>
 
     </div>
 
@@ -214,7 +271,7 @@ body {
 
     <div class="info">
 
-        국립국어원 표준국어대사전 Open API를 이용한 검색 서비스입니다.
+        국립국어원 표준국어대사전 Open API를 이용합니다.
 
     </div>
 
@@ -223,35 +280,38 @@ body {
 
 <script>
 
-/* =====================================================
-   국립국어원 표준국어대사전 인증키
-   ===================================================== */
+/*
+==================================================
+국립국어원 표준국어대사전 Open API
+==================================================
+*/
 
 const API_KEY =
 "F189E2B227CC59D32D9DB4E8AD8DF289";
-
-
-/* API 주소 */
 
 const API_URL =
 "https://stdict.korean.go.kr/api/search.do";
 
 
-/* 검색 */
+/*
+==================================================
+검색
+==================================================
+*/
 
 async function searchWord() {
 
     const input =
         document.getElementById("searchInput");
 
-    const word =
-        input.value.trim();
-
     const status =
         document.getElementById("status");
 
     const results =
         document.getElementById("results");
+
+    const word =
+        input.value.trim();
 
 
     if (!word) {
@@ -264,15 +324,27 @@ async function searchWord() {
 
 
     status.textContent =
-        "검색 중입니다...";
+        "표준국어대사전에서 검색 중입니다...";
 
     results.innerHTML = "";
 
 
+    /*
+    공식 API 요청
+
+    key       : 인증키
+    q         : 검색어
+    req_type  : json
+    start     : 시작 번호
+    num       : 결과 개수
+    */
+
     const url =
         API_URL
-        + "?key=" + encodeURIComponent(API_KEY)
-        + "&q=" + encodeURIComponent(word)
+        + "?key="
+        + encodeURIComponent(API_KEY)
+        + "&q="
+        + encodeURIComponent(word)
         + "&req_type=json"
         + "&start=1"
         + "&num=30";
@@ -287,7 +359,7 @@ async function searchWord() {
         if (!response.ok) {
 
             throw new Error(
-                "API 서버 응답 오류 : "
+                "서버 오류 : HTTP "
                 + response.status
             );
 
@@ -301,11 +373,15 @@ async function searchWord() {
         console.log(data);
 
 
+        /*
+        API 오류 확인
+        */
+
         if (data.error) {
 
             throw new Error(
-                data.error.message ||
-                "API 오류가 발생했습니다."
+                data.error.message
+                || "API 오류"
             );
 
         }
@@ -318,6 +394,11 @@ async function searchWord() {
         let items =
             channel.item || [];
 
+
+        /*
+        결과가 1개일 경우
+        배열이 아니라 객체로 오는 경우가 있으므로 처리
+        */
 
         if (!Array.isArray(items)) {
 
@@ -332,18 +413,30 @@ async function searchWord() {
             + "건";
 
 
+        /*
+        검색 결과 없음
+        */
+
         if (items.length === 0) {
 
             results.innerHTML = `
-                <div class="result empty">
+
+                <div class="empty">
+
+                    <div style="font-size:40px;">
+                        🔎
+                    </div>
+
+                    <br>
 
                     검색 결과가 없습니다.
 
-                    <br><br>
+                    <br>
 
                     다른 단어를 검색해 보세요.
 
                 </div>
+
             `;
 
             return;
@@ -351,9 +444,27 @@ async function searchWord() {
         }
 
 
+        /*
+        결과 출력
+        */
+
         results.innerHTML =
             items.map(function(item) {
 
+
+                const wordName =
+                    item.word || "";
+
+
+                const supNo =
+                    item.sup_no
+                    ? item.sup_no
+                    : "";
+
+
+                /*
+                sense 처리
+                */
 
                 let senses =
                     item.sense || [];
@@ -366,41 +477,139 @@ async function searchWord() {
                 }
 
 
-                let definitions =
-                    senses.map(function(sense) {
+                /*
+                뜻풀이 생성
+                */
 
-                        return `
-                            <div class="meaning">
-
-                                ${escapeHTML(
-                                    sense.definition || ""
-                                )}
-
-                            </div>
-                        `;
-
-                    }).join("");
+                let meanings =
+                    senses.map(
+                        function(sense, index) {
 
 
-                let detailLink =
-                    senses[0] &&
+                            const definition =
+                                sense.definition || "";
+
+
+                            const category =
+                                sense.type || "";
+
+
+                            const example =
+                                sense.example || "";
+
+
+                            return `
+
+                                <div class="meaning">
+
+                                    <div class="definition">
+
+                                        <span
+                                            class="meaning-number">
+                                            ${index + 1}.
+                                        </span>
+
+                                        ${escapeHTML(
+                                            definition
+                                        )}
+
+                                    </div>
+
+
+                                    ${
+                                        category
+                                        ?
+                                        `
+                                        <div class="category">
+
+                                            ${escapeHTML(
+                                                category
+                                            )}
+
+                                        </div>
+                                        `
+                                        :
+                                        ""
+                                    }
+
+
+                                    ${
+                                        example
+                                        ?
+                                        `
+                                        <div class="example">
+
+                                            ${escapeHTML(
+                                                example
+                                            )}
+
+                                        </div>
+                                        `
+                                        :
+                                        ""
+                                    }
+
+                                </div>
+
+                            `;
+
+                        }
+                    ).join("");
+
+
+                /*
+                상세보기 링크
+                */
+
+                let detailLink = "";
+
+
+                if (
+                    senses.length > 0 &&
                     senses[0].link
-                    ? senses[0].link
-                    : "https://stdict.korean.go.kr/search/searchResult.do?searchKeyword="
-                    + encodeURIComponent(
-                        item.word || word
-                    );
+                ) {
+
+                    detailLink =
+                        senses[0].link;
+
+                }
+
+
+                if (!detailLink) {
+
+                    detailLink =
+                        "https://stdict.korean.go.kr/search/searchResult.do?searchKeyword="
+                        + encodeURIComponent(
+                            wordName
+                        );
+
+                }
 
 
                 return `
 
-                    <div class="result">
+                    <div class="result-card">
 
                         <div class="word">
 
                             ${escapeHTML(
-                                item.word || ""
+                                wordName
                             )}
+
+                            ${
+                                supNo
+                                ?
+                                `
+                                <span
+                                    class="word-no">
+                                    [${escapeHTML(
+                                        supNo
+                                    )}]
+                                </span>
+                                `
+                                :
+                                ""
+                            }
 
                         </div>
 
@@ -422,18 +631,38 @@ async function searchWord() {
                         }
 
 
-                        ${definitions}
+                        ${
+                            item.origin
+                            ?
+                            `
+                            <div class="origin">
+
+                                원어 :
+                                ${escapeHTML(
+                                    item.origin
+                                )}
+
+                            </div>
+                            `
+                            :
+                            ""
+                        }
+
+
+                        ${meanings}
 
 
                         <button
-                            class="detail"
+                            class="detail-button"
                             onclick="window.open(
-                                '${detailLink}',
+                                ${JSON.stringify(
+                                    detailLink
+                                )},
                                 '_blank'
-                            )"
-                        >
+                            )">
 
-                            표준국어대사전에서 자세히 보기
+                            표준국어대사전
+                            상세 페이지
 
                         </button>
 
@@ -444,7 +673,9 @@ async function searchWord() {
             }).join("");
 
 
-    } catch (error) {
+    }
+
+    catch (error) {
 
         console.error(error);
 
@@ -454,7 +685,13 @@ async function searchWord() {
 
         results.innerHTML = `
 
-            <div class="result empty">
+            <div class="empty">
+
+                <div style="font-size:40px;">
+                    ⚠️
+                </div>
+
+                <br>
 
                 <strong>
                     검색에 실패했습니다.
@@ -468,7 +705,13 @@ async function searchWord() {
 
                 <br><br>
 
-                API 사용 URL 또는 인증키 설정을 확인해야 합니다.
+                <small>
+
+                    API 사용 URL과 인증키가
+                    정상적으로 등록되어 있는지
+                    확인해야 합니다.
+
+                </small>
 
             </div>
 
@@ -479,26 +722,49 @@ async function searchWord() {
 }
 
 
-/* HTML 특수문자 처리 */
+/*
+==================================================
+HTML 특수문자 처리
+==================================================
+*/
 
 function escapeHTML(value) {
 
     return String(value)
 
-        .replace(/&/g, "&amp;")
+        .replace(
+            /&/g,
+            "&amp;"
+        )
 
-        .replace(/</g, "&lt;")
+        .replace(
+            /</g,
+            "&lt;"
+        )
 
-        .replace(/>/g, "&gt;")
+        .replace(
+            />/g,
+            "&gt;"
+        )
 
-        .replace(/"/g, "&quot;")
+        .replace(
+            /"/g,
+            "&quot;"
+        )
 
-        .replace(/'/g, "&#039;");
+        .replace(
+            /'/g,
+            "&#039;"
+        );
 
 }
 
 
-/* 엔터키로 검색 */
+/*
+==================================================
+Enter 키 검색
+==================================================
+*/
 
 document
     .getElementById("searchInput")
@@ -506,7 +772,9 @@ document
         "keydown",
         function(event) {
 
-            if (event.key === "Enter") {
+            if (
+                event.key === "Enter"
+            ) {
 
                 searchWord();
 
