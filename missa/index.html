@@ -65,6 +65,7 @@ h2.sec{font-size:1.1rem;margin:22px 0 8px;padding-bottom:4px;border-bottom:2px s
 .foot{margin-top:26px;font-size:.72rem;color:var(--sub);line-height:1.5}
 .pbig{display:block;width:100%;min-height:84px;margin:0 0 12px;padding:12px 16px;border:0;border-radius:14px;color:#fff;font-weight:700;font-size:1.1rem;line-height:1.4;text-align:center;box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .plist{display:block;width:100%;min-height:64px;margin:0 0 10px;padding:12px 16px;border:2px solid var(--line);border-left-width:10px;border-left-color:var(--btn);border-radius:12px;background:#fff;color:var(--ink);font-weight:700;font-size:1rem;line-height:1.4;text-align:left;text-decoration:none}
+.calhint{margin:0 0 12px;text-align:center;font-size:.95rem;font-weight:700;color:var(--sub);line-height:1.4}
 .plist small{display:block;font-weight:400;font-size:.7rem;color:var(--sub)}
 .ptitle{font-size:1.25rem;font-weight:700;margin:6px 0 10px;line-height:1.4}
 .ptext .ln{margin-bottom:.35em}
@@ -300,6 +301,7 @@ function renderHome(){
   let h='<div class="top"><h1>'+M+'월 매일미사</h1></div>';
   if(DATA[tk]) h+='<div class="today"><button class="btn" onclick="go(\''+tk+'\')">오늘 미사 보기 ('+parseInt(tk.slice(4,6))+'월 '+parseInt(tk.slice(6))+'일)</button></div>';
   h+='<div class="mnav"><button class="mb" '+(M<=11?'disabled':'onclick="setMonth('+(M-1)+')"')+' aria-label="이전 달">◀</button><div class="mt">'+Y+'년 '+M+'월</div><button class="mb" '+(M>=12?'disabled':'onclick="setMonth('+(M+1)+')"')+' aria-label="다음 달">▶</button></div>';
+  h+='<p class="calhint">해당 날짜를 누르면 해당 매일미사로 이동합니다.</p>';
   h+='<table class="cal"><tr><th class="sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th>토</th></tr>';
   const first=new Date(Y,M-1,1).getDay(); let d=1; const last=new Date(Y,M,0).getDate();
   for(let r=0;r<6&&d<=last;r++){h+='<tr>';for(let c=0;c<7;c++){
