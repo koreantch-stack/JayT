@@ -392,13 +392,14 @@ function renderDay(k){
   if(e.i) h+='<div class="intro">'+esc(e.i)+'</div>';
   if(e.m){h+='<div class="mset">'+e.m.map((x,i)=>'<button class="tab'+(i===state.mass?' on':'')+'" onclick="setMass('+i+')">'+esc(x.l)+'</button>').join('')+'</div>';}
   const mains=MAIN.filter(x=>S[x]);
-  h+='<div class="tabs" id="tabs">'+mains.map(x=>'<button class="tab'+(x===state.tab?' on':'')+'" onclick="setTab(\''+x+'\')">'+x+'</button>').join('')+'</div>';
+  if(mains.length) h+='<div class="tabs" id="tabs">'+mains.map(x=>'<button class="tab'+(x===state.tab?' on':'')+'" onclick="setTab(\''+x+'\')">'+x+'</button>').join('')+'</div>';
   const others=OTHER.filter(x=>S[x]);
   if(others.length){
     h+='<button class="more" onclick="toggleMore()">'+(state.more?'다른 기도문 접기':'다른 기도문 보기 (입당송·본기도 등)')+'</button>';
     if(state.more) h+='<div class="tabs small">'+others.map(x=>'<button class="tab'+(x===state.tab?' on':'')+'" onclick="setTab(\''+x+'\')">'+x+'</button>').join('')+'</div>';
   }
-  h+='<div class="body" id="body"><div class="bh"><h3>'+esc(state.tab)+'</h3>'+fsBox()+'</div><p>'+renderLines(state.tab,S[state.tab])+'</p></div>';
+  if(S[state.tab]) h+='<div class="body" id="body"><div class="bh"><h3>'+esc(state.tab)+'</h3>'+fsBox()+'</div><p>'+renderLines(state.tab,S[state.tab])+'</p></div>';
+  else h+='<div class="body" id="body"><p>이날은 미사 본문이 없습니다. 위의 안내글을 읽어 주세요.</p></div>';
   h+='<div class="bar" style="margin-top:14px"><button class="btn alt" onclick="goHome()">달력</button>'+
      '<button class="btn alt" '+(DATA[prev]&&prev>=todayKey()?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
      '<button class="btn alt" '+(DATA[next]?'onclick="go(\''+next+'\')"':'disabled style="opacity:.35"')+'>다음날 ▶</button></div>';
