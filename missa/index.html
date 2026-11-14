@@ -399,7 +399,6 @@ function renderDay(k){
     if(state.more) h+='<div class="tabs small">'+others.map(x=>'<button class="tab'+(x===state.tab?' on':'')+'" onclick="setTab(\''+x+'\')">'+x+'</button>').join('')+'</div>';
   }
   if(S[state.tab]) h+='<div class="body" id="body"><div class="bh"><h3>'+esc(state.tab)+'</h3>'+fsBox()+'</div><p>'+renderLines(state.tab,S[state.tab])+'</p></div>';
-  else h+='<div class="body" id="body"><p>이날은 미사 본문이 없습니다. 위의 안내글을 읽어 주세요.</p></div>';
   h+='<div class="bar" style="margin-top:14px"><button class="btn alt" onclick="goHome()">달력</button>'+
      '<button class="btn alt" '+(DATA[prev]&&prev>=todayKey()?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
      '<button class="btn alt" '+(DATA[next]?'onclick="go(\''+next+'\')"':'disabled style="opacity:.35"')+'>다음날 ▶</button></div>';
