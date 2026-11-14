@@ -31,6 +31,7 @@ h1{font-size:1.35rem;margin:0}
 .cell.major{background:#fff3c4;border-color:#b08a00;border-width:3px}
 .cell.now{outline:4px solid var(--btn);outline-offset:1px}
 .cell.none{opacity:.35}
+.cell.past{opacity:.35;background:#eee;border-color:#ccc}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:.8rem;color:var(--sub);margin:8px 2px 4px;align-items:center}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:50%;border:2px solid #777}
@@ -328,8 +329,9 @@ function renderHome(){
   for(let r=0;r<6&&d<=last;r++){h+='<tr>';for(let c=0;c<7;c++){
     if((r===0&&c<first)||d>last){h+='<td></td>';continue;}
     const k=key(Y,M,d),e=DATA[k];
-    const cls='cell'+(e&&isMajor(e.t)?' major':'')+(k===tk?' now':'')+(e?'':' none');
-    h+='<td class="'+(c===0?'sun':'')+'"><button class="'+cls+'" '+(e?'onclick="go(\''+k+'\')"':'disabled')+' aria-label="'+d+'일 '+(e?esc(dispTitle(e.t)):'')+'"><span class="n">'+d+'</span><span class="dot c-'+(e?e.c:'')+'"></span></button></td>';
+    const past=!!e&&k<tk;
+    const cls='cell'+(e&&isMajor(e.t)?' major':'')+(k===tk?' now':'')+(e?'':' none')+(past?' past':'');
+    h+='<td class="'+(c===0?'sun':'')+'"><button class="'+cls+'" '+(e&&!past?'onclick="go(\''+k+'\')"':'disabled')+' aria-label="'+d+'일 '+(e?esc(dispTitle(e.t)):'')+'"><span class="n">'+d+'</span><span class="dot c-'+(e?e.c:'')+'"></span></button></td>';
     d++;}h+='</tr>';}
   h+='</table>';
   h+='<div class="legend"><span><i class="c-백"></i>백색</span><span><i class="c-녹"></i>녹색</span><span><i class="c-홍"></i>홍색</span><span><i class="c-자"></i>보라색</span><span><b></b>대축일·축일·주일</span></div>';
@@ -381,7 +383,7 @@ function renderDay(k){
   const prev=shift(k,-1), next=shift(k,1);
   let h='<div class="top"><h1>매일미사</h1></div>';
   h+='<div class="bar"><button class="btn alt" onclick="goHome()">달력</button>'+
-     '<button class="btn alt" '+(DATA[prev]?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
+     '<button class="btn alt" '+(DATA[prev]&&prev>=todayKey()?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
      '<button class="btn alt" '+(DATA[next]?'onclick="go(\''+next+'\')"':'disabled style="opacity:.35"')+'>다음날 ▶</button></div>';
   h+='<div class="head"><div class="date">'+esc(e.d)+'</div><div class="title"><span class="dot c-'+e.c+'" title="'+COLN[e.c]+'"></span><span>'+esc(dispTitle(e.t))+'</span></div>';
   if(e.n) h+='<div class="opt">'+esc(e.n)+'</div>';
@@ -398,7 +400,7 @@ function renderDay(k){
   }
   h+='<div class="body" id="body"><div class="bh"><h3>'+esc(state.tab)+'</h3>'+fsBox()+'</div><p>'+renderLines(state.tab,S[state.tab])+'</p></div>';
   h+='<div class="bar" style="margin-top:14px"><button class="btn alt" onclick="goHome()">달력</button>'+
-     '<button class="btn alt" '+(DATA[prev]?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
+     '<button class="btn alt" '+(DATA[prev]&&prev>=todayKey()?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
      '<button class="btn alt" '+(DATA[next]?'onclick="go(\''+next+'\')"':'disabled style="opacity:.35"')+'>다음날 ▶</button></div>';
   h+=foot();
   app.innerHTML=h;
