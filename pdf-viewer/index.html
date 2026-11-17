@@ -20,7 +20,10 @@
   <div class="emptyBox">
     <h1>PDF 뷰어</h1>
     <p class="sub">광고 없이 PDF만 봅니다</p>
-    <button id="btnOpenBig" class="big">PDF 열기</button>
+    <div class="btnRow">
+      <button id="btnOpenBig" class="big">PDF 열기</button>
+      <button id="btnEdit" class="big alt">편집</button>
+    </div>
     <div id="recentBox" hidden>
       <h2>최근 본 문서</h2>
       <ul id="recentList"></ul>
@@ -29,34 +32,30 @@
 </div>
 
 <div id="topbar">
-  <div id="title">PDF 뷰어</div>
-  <button id="btnInfo" class="tbtn">정보</button>
-</div>
-
-<div id="bar">
-  <button id="btnOpen" class="tbtn">열기</button>
-  <button id="btnSearch" class="tbtn">검색</button>
-  <button id="btnAnno" class="tbtn">필기</button>
-  <button id="btnPage" class="tbtn pageBtn">- / -</button>
-  <button id="btnDark" class="tbtn">다크</button>
+  <button id="btnHome" class="ib" aria-label="처음 화면" data-ic="home"></button>
+  <button id="btnSearch" class="ib" aria-label="검색" data-ic="search"></button>
+  <button id="btnPage" class="tbtn pageBtn" aria-label="쪽 이동">- / -</button>
+  <button id="btnView" class="ib" aria-label="보기 방식"></button>
+  <button id="btnFit" class="ib" aria-label="쪽 전체 보기" data-ic="fit"></button>
+  <button id="btnAnno" class="ib" aria-label="필기" data-ic="pencil"></button>
+  <button id="btnDark" class="ib" aria-label="다크 모드" data-ic="moon"></button>
+  <button id="btnMore" class="ib" aria-label="더보기" data-ic="more"></button>
 </div>
 
 <div id="annoBar" hidden>
-  <div class="arow" id="aTools">
-    <button data-tool="hand">손</button>
-    <button data-tool="pen">펜</button>
-    <button data-tool="hl">형광펜</button>
-    <button data-tool="tx">글자</button>
-    <button data-tool="er">지우개</button>
-  </div>
-  <div class="arow">
-    <span id="aSw"></span>
-    <button id="aWidth">굵기</button>
-    <button id="aUndo">되돌리기</button>
-    <button id="aSave">저장</button>
-    <button id="aDone">완료</button>
-  </div>
+  <button class="ib" data-tool="hand" aria-label="손(이동)" data-ic="hand"></button>
+  <button class="ib" data-tool="pen" aria-label="펜" data-ic="pen"><i class="dot"></i></button>
+  <button class="ib" data-tool="hl" aria-label="형광펜" data-ic="marker"><i class="dot"></i></button>
+  <button class="ib" data-tool="tx" aria-label="글자" data-ic="text"><i class="dot"></i></button>
+  <button class="ib" data-tool="er" aria-label="지우개" data-ic="eraser"></button>
+  <button class="ib" data-tool="st" aria-label="서명·도장" data-ic="stamp"></button>
+  <span class="sep"></span>
+  <button class="ib" id="aUndo" aria-label="되돌리기" data-ic="undo"></button>
+  <button class="ib" id="aRedo" aria-label="다시 실행" data-ic="redo"></button>
+  <button class="ib" id="aSave" aria-label="PDF로 저장" data-ic="save"></button>
+  <button class="ib" id="aDone" aria-label="필기 끝내기" data-ic="check"></button>
 </div>
+<div id="annoPop" hidden></div>
 
 <div id="zoomPill" hidden></div>
 <div id="busy" hidden></div>
@@ -68,6 +67,7 @@
 </div>
 
 <input id="file" type="file" accept="application/pdf,.pdf" hidden>
+<div id="editor" hidden></div>
 <script type="module" src="app.js"></script>
 </body>
 </html>

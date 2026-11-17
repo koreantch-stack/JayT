@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private boolean pageReady = false;
     private ValueCallback<Uri[]> chooserCb;
+    private boolean chooserForWeb = false;
 
     // 웹앱에 넘겨줄 PDF (JavascriptInterface는 별도 스레드에서 불리므로 lock으로 보호)
     private final Object lock = new Object();
@@ -206,9 +207,27 @@ public class MainActivity extends Activity {
                                              FileChooserParams params) {
                 if (chooserCb != null) chooserCb.onReceiveValue(null);
                 chooserCb = callback;
+                // 편집 화면(합치기·사진 등)에서 연 선택창은 고른 파일을 웹에 그대로 돌려준다
+                boolean forWeb = params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
+                java.util.ArrayList<String> mimes = new java.util.ArrayList<>();
+                String[] acc = params.getAcceptTypes();
+                if (acc != null) for (String a : acc) {
+                    if (a == null) continue;
+                    a = a.trim();
+                    if (a.equals(".pdfedit")) { forWeb = true; continue; }
+                    if (a.equals(".pdf")) a = "application/pdf";
+                    if (a.contains("/") && !mimes.contains(a)) mimes.add(a);
+                }
                 Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 i.addCategory(Intent.CATEGORY_OPENABLE);
-                i.setType("application/pdf");
+                if (forWeb) {
+                    i.setType(mimes.size() == 1 ? mimes.get(0) : "*/*");
+                    if (mimes.size() > 1) i.putExtra(Intent.EXTRA_MIME_TYPES, mimes.toArray(new String[0]));
+                    if (params.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                } else {
+                    i.setType("application/pdf");
+                }
+                chooserForWeb = forWeb;
                 try {
                     startActivityForResult(i, REQ_PICK);
                 } catch (Exception e) {
@@ -243,6 +262,21 @@ public class MainActivity extends Activity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQ_PICK) return;
+        if (chooserForWeb) {
+            Uri[] out = null;
+            if (resultCode == RESULT_OK && data != null) {
+                if (data.getClipData() != null) {
+                    int n = data.getClipData().getItemCount();
+                    out = new Uri[n];
+                    for (int k = 0; k < n; k++) out[k] = data.getClipData().getItemAt(k).getUri();
+                } else if (data.getData() != null) {
+                    out = new Uri[]{data.getData()};
+                }
+            }
+            if (chooserCb != null) { chooserCb.onReceiveValue(out); chooserCb = null; }
+            chooserForWeb = false;
+            return;
+        }
         // 웹 쪽 파일 입력은 취소로 돌려 두고, 고른 파일은 앱이 직접 웹앱에 넘긴다
         if (chooserCb != null) {
             chooserCb.onReceiveValue(null);

@@ -1,7 +1,7 @@
 // 화면 파일은 온라인이면 항상 최신으로 받고(수정 즉시 반영), 오프라인이면 저장해 둔 것을 씁니다.
 // lib/ 안의 pdf.js와 글꼴 데이터는 바뀌지 않으므로 한 번 받으면 계속 저장본을 씁니다.
-const CACHE = 'pdfv-v2';
-const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png',
+const CACHE = 'pdfv-v3';
+const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'icons.js', 'stamps.js', 'edit.js', 'manifest.webmanifest', 'icon-192.png',
   'lib/pdf.min.mjs', 'lib/pdf.worker.min.mjs'];
 
 self.addEventListener('install', (e) => {

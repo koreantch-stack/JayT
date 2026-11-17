@@ -1,18 +1,19 @@
 import * as pdfjsLib from './lib/pdf.min.mjs';
+import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 const $ = (s) => document.querySelector(s);
-const scroller = $('#scroller'), pagesEl = $('#pages'), bar = $('#bar'), topbar = $('#topbar');
-const pageBtn = $('#btnPage'), titleEl = $('#title'), zoomPill = $('#zoomPill');
+const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
+const pageBtn = $('#btnPage'), zoomPill = $('#zoomPill');
 const emptyEl = $('#empty'), busyEl = $('#busy'), toastEl = $('#toast');
 const sheet = $('#sheet'), sheetBody = $('#sheetBody'), fileInput = $('#file');
 
 const dpr = Math.min(window.devicePixelRatio || 1, 3);
 const MAX_PIXELS = 6e6;          // 캔버스 한 장의 최대 화소 수 (폰 메모리 보호)
-const MIN_Z = 1, MAX_Z = 8;      // 1 = 화면 폭에 맞춤
+const MIN_Z = 0.25, MAX_Z = 8;   // 1 = 화면 폭에 맞춤 (그보다 작으면 줄여서 여러 쪽이 보임)
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 const store = {
@@ -40,14 +41,18 @@ function toast(msg, ms = 2400) {
 function busy(msg) { busyEl.textContent = msg || ''; busyEl.hidden = !msg; }
 
 /* ---------- 상태 ---------- */
-let pdf = null, pages = [], fit = 0, zoom = 1, docKey = '', docName = '';
+let pdf = null, pages = [], fit = 0, zoom = 1, docKey = '', docName = '', docBuf = null;
 const live = new Set();            // 캔버스를 가진 페이지
 let curJob = null, pumping = false;
 let uiHidden = false;
+let vm = store.get('vm', 'scroll');   // 보기 방식: scroll(이어서) | single(한 쪽) | double(두 쪽)
+if (!['scroll', 'single', 'double'].includes(vm)) vm = 'scroll';
+let blk = 1, shown = [], sumAr = 0;    // 낱장 보기에서 지금 보이는 첫 쪽 번호, 보이는 쪽들, 모든 쪽의 높이/너비 합
 const hl = { rects: new Map(), stamp: 0 };   // 검색 강조
 
 document.body.classList.toggle('dark', !!store.get('dark', false));
-document.body.classList.add('noDoc');
+document.body.classList.add('noDoc', 'vm-' + vm);
+fillIcons();
 
 /* ---------- 문서 열기 ---------- */
 async function openBuffer(buf, name, fromStore) {
@@ -55,6 +60,7 @@ async function openBuffer(buf, name, fromStore) {
   busy('불러오는 중...');
   // pdf.js가 데이터를 가져가 버리므로, 보관할 사본은 먼저 떠 둔다
   const keep = (!fromStore && buf.byteLength <= KEEP_MAX) ? buf.slice(0) : null;
+  const copyForEdit = keep || buf.slice(0);
   let doc, task;
   try {
     task = pdfjsLib.getDocument({
@@ -73,7 +79,7 @@ async function openBuffer(buf, name, fromStore) {
     return false;
   }
   closeDoc();
-  pdf = doc; docName = name || '문서.pdf';
+  pdf = doc; docName = name || '문서.pdf'; docBuf = copyForEdit;
   docKey = (doc.fingerprints && doc.fingerprints[0]) || docName;
 
   const n = doc.numPages;
@@ -107,12 +113,14 @@ async function openBuffer(buf, name, fromStore) {
 
   emptyEl.hidden = true; scroller.hidden = false;
   document.body.classList.remove('noDoc');
-  titleEl.textContent = docName;
-  fit = scroller.clientWidth; zoom = 1; applyWidth();
+  document.title = docName;
+  sumAr = pages.reduce((a, q) => a + q.ar + 0.012, 0);
+  shown = [];
+  fit = scroller.clientWidth / cols(); zoom = 1; applyWidth();
 
   const pos = store.get('pos:' + docKey, null);
-  if (pos) goPage(pos.p, pos.f); else scroller.scrollTop = 0;
-  scroller.scrollLeft = 0;
+  if (paged()) showBlock(pos ? pos.p : 1);
+  else { if (pos) goPage(pos.p, pos.f); else scroller.scrollTop = 0; scroller.scrollLeft = 0; }
   await loadAnno();
   busy('');
   updateIndicator(); refresh(); saveRecent();
@@ -123,8 +131,9 @@ async function openBuffer(buf, name, fromStore) {
 function closeDoc() {
   if (curJob) { try { curJob.task.cancel(); } catch { /* 무시 */ } curJob = null; }
   for (const p of pages) freeCanvas(p);
-  pagesEl.replaceChildren(); pages = []; live.clear();
+  pagesEl.replaceChildren(); pages = []; live.clear(); shown = [];
   if (pdf) { pdf.destroy().catch(() => {}); pdf = null; }
+  docBuf = null;
   hl.rects.clear(); hl.stamp++; searchRun++; textCache.clear();
   annoReset();
 }
@@ -147,8 +156,13 @@ function askPassword(task, update, reason) {
 }
 
 /* ---------- 레이아웃 ---------- */
+const cols = () => (vm === 'double' ? 2 : 1);
+const paged = () => vm !== 'scroll';
 function applyWidth() { pagesEl.style.setProperty('--pw', (fit * zoom) + 'px'); }
 
+function blockPages() {      // 낱장·두 쪽 보기에서 화면에 있는 쪽들
+  return (vm === 'double' ? [pages[blk - 1], pages[blk]] : [pages[blk - 1]]).filter(Boolean);
+}
 function pageAt(y) {
   let lo = 0, hi = pages.length - 1;
   while (lo < hi) {
@@ -157,14 +171,26 @@ function pageAt(y) {
   }
   return lo;
 }
+function pageFromPoint(cx, cy) {
+  const rc = scroller.getBoundingClientRect();
+  const list = paged() ? blockPages() : [pages[pageAt(scroller.scrollTop + cy - rc.top)]];
+  for (const p of list) {
+    const r = p.el.getBoundingClientRect();
+    if (r.width && cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) return p;
+  }
+  return null;
+}
 
 function goPage(n, f = 0) {
   if (!pages.length) return;
-  const p = pages[clamp(Math.round(n), 1, pages.length) - 1];
+  n = clamp(Math.round(n), 1, pages.length);
+  if (paged()) { showBlock(n); return; }
+  const p = pages[n - 1];
   scroller.scrollTop = p.el.offsetTop + clamp(f, 0, 1) * p.el.offsetHeight;
 }
 
 function currentPos() {
+  if (paged()) return { p: blk, f: 0 };
   const st = scroller.scrollTop;
   const i = pageAt(st + 1), e = pages[i].el;
   return { p: i + 1, f: clamp((st - e.offsetTop) / e.offsetHeight, 0, 0.999) };
@@ -172,8 +198,102 @@ function currentPos() {
 
 function updateIndicator() {
   if (!pages.length) return;
+  if (paged()) {
+    const last = vm === 'double' && blk < pages.length ? `-${blk + 1}` : '';
+    pageBtn.textContent = `${blk}${last} / ${pages.length}`;
+    return;
+  }
   const i = pageAt(scroller.scrollTop + scroller.clientHeight * 0.35);
   pageBtn.textContent = `${i + 1} / ${pages.length}`;
+}
+
+/* 보기 방식 */
+function padsV() { const cs = getComputedStyle(pagesEl); return [parseFloat(cs.paddingTop) || 0, parseFloat(cs.paddingBottom) || 0]; }
+function blockAr() {       // 쪽 한 줄(보이는 덩어리)의 높이 / 쪽 너비
+  if (!pages.length) return 1;
+  if (!paged()) return sumAr;
+  return Math.max(...blockPages().map((p) => p.ar));
+}
+// 배율 z일 때 덩어리의 위치와 전체 크기를 계산 (실제 화면 배치와 같은 식)
+function layoutAt(z) {
+  const vw = scroller.clientWidth, vh = scroller.clientHeight;
+  const pw = fit * z, bw = cols() * pw, bh = pw * blockAr();
+  const [pt, pb] = padsV();
+  const Wc = Math.max(bw, vw), Hc = Math.max(pt + bh + pb, vh);
+  return { Wc, Hc, bx: (Wc - bw) / 2, by: pt + (paged() ? Math.max(0, (Hc - pt - pb - bh) / 2) : 0) };
+}
+// 한 쪽(들)이 화면에 다 들어오는 배율 (최대 1 = 폭 맞춤)
+function zWhole(ar) {
+  const [pt, pb] = padsV();
+  const availH = scroller.clientHeight - (paged() ? pt + pb : 56);
+  return clamp(availH / (fit * ar), MIN_Z, 1);
+}
+const baseZoom = () => (paged() ? zWhole(blockAr()) : 1);
+
+function showBlock(n) {
+  n = clamp(Math.round(n), 1, pages.length);
+  blk = vm === 'double' ? n - ((n - 1) % 2) : n;
+  const vis = blockPages();
+  for (const q of shown) if (!vis.includes(q)) { q.el.classList.remove('cur'); freeCanvas(q); }
+  for (const q of vis) q.el.classList.add('cur');
+  shown = vis;
+  zoom = baseZoom(); applyWidth();
+  scroller.scrollLeft = 0; scroller.scrollTop = 0;
+  updateIndicator(); scheduleRefresh(30, true); savePosSoon();
+}
+function pageStep(d) {
+  if (!pages.length) return;
+  if (paged()) {
+    const next = clamp(blk + d * cols(), 1, pages.length);
+    if (next === blk || (vm === 'double' && d > 0 && blk + 1 >= pages.length)) { toast(d > 0 ? '마지막 쪽입니다' : '첫 쪽입니다', 900); return; }
+    showBlock(next);
+  } else {
+    const vh = scroller.clientHeight;
+    scroller.scrollTop += d * vh * 0.9;
+  }
+}
+
+function relayout() {      // 화면 크기나 보기 방식이 바뀐 뒤 배치를 다시 잡는다
+  const c = pages.length ? currentPos() : { p: 1, f: 0 };
+  fit = scroller.clientWidth / cols();
+  if (paged()) showBlock(c.p);
+  else { applyWidth(); goPage(c.p, c.f); scheduleRefresh(100, true); }
+}
+
+const VIEW_ICON = { scroll: 'view-scroll', single: 'view-single', double: 'view-double' };
+const VIEW_NAME = { scroll: '이어서 보기', single: '한 쪽씩 보기', double: '두 쪽씩 보기' };
+function paintViewBtn() {
+  const b = $('#btnView');
+  b.innerHTML = svg(VIEW_ICON[vm]);
+  b.setAttribute('aria-label', VIEW_NAME[vm]);
+}
+function setViewMode(m) {
+  if (m === vm) return;
+  const c = pages.length ? currentPos() : { p: 1, f: 0 };
+  document.body.classList.remove('vm-' + vm);
+  vm = m; store.set('vm', m);
+  document.body.classList.add('vm-' + vm);
+  paintViewBtn();
+  for (const q of pages) q.el.classList.remove('cur');
+  shown = [];
+  if (!pdf) return;
+  fit = scroller.clientWidth / cols();
+  if (paged()) showBlock(c.p);
+  else { zoom = 1; applyWidth(); goPage(c.p, c.f); scheduleRefresh(60, true); savePosSoon(); }
+  toast(VIEW_NAME[vm], 1100);
+}
+function toggleFit() {      // 폭 맞춤 <-> 쪽 전체 보기
+  if (!pdf) return;
+  const target = paged() ? 1 : zWhole(pages[currentPos().p - 1].ar);
+  const whole = paged() ? baseZoom() : target;
+  if (!paged() && whole >= 0.999) { toast('이미 한 쪽이 다 보입니다', 1100); return; }
+  const rc = scroller.getBoundingClientRect();
+  if (Math.abs(zoom - whole) < 0.02) { animateZoom(1, rc.width / 2, rc.height / 2); return; }
+  if (paged()) { zoom = whole; applyWidth(); scroller.scrollLeft = 0; scroller.scrollTop = 0; showPill(); scheduleRefresh(30, true); return; }
+  const c = currentPos();
+  zoom = whole; applyWidth(); goPage(c.p, 0);
+  scroller.scrollTop = Math.max(0, scroller.scrollTop - 48); scroller.scrollLeft = 0;
+  showPill(); updateIndicator(); scheduleRefresh(30, true); savePosSoon();
 }
 
 /* ---------- 확대 ---------- */
@@ -183,16 +303,23 @@ function showPill(z = zoom) {
   clearTimeout(pillTimer); pillTimer = setTimeout(() => { zoomPill.hidden = true; }, 900);
 }
 
+// 배율 z0 -> z1. 화면 위 점 (mx, my) 아래의 내용을 붙잡은 채로 바뀔 때의
+// 스크롤 위치(L, T)와 덩어리 위치(a, b)를 계산한다. 실제 레이아웃과 같은 식이라
+// 확대 중 미리보기와 손을 뗀 뒤의 화면이 어긋나지 않는다.
+function anchorCalc(z0, z1, sl0, st0, mx, my) {
+  const a = layoutAt(z0), b = layoutAt(z1), r = z1 / z0;
+  const vw = scroller.clientWidth, vh = scroller.clientHeight;
+  const nx = b.bx + (sl0 + mx - a.bx) * r, ny = b.by + (st0 + my - a.by) * r;
+  return { a, b, r, L: clamp(nx - mx, 0, Math.max(0, b.Wc - vw)), T: clamp(ny - my, 0, Math.max(0, b.Hc - vh)) };
+}
+
 // 키보드·마우스 휠용: 배율을 바로 바꾼다 (손가락 확대는 아래 제스처 방식)
-// cx, cy: 화면 위 기준점. 그 점 아래의 내용이 제자리에 있도록 확대한다.
 function setZoom(z, cx, cy) {
   z = clamp(z, MIN_Z, MAX_Z);
   if (Math.abs(z - zoom) < 1e-4) return;
-  const r = z / zoom;
-  const sx = scroller.scrollLeft + cx, sy = scroller.scrollTop + cy;
+  const c = anchorCalc(zoom, z, scroller.scrollLeft, scroller.scrollTop, cx, cy);
   zoom = z; applyWidth();
-  scroller.scrollLeft = sx * r - cx;
-  scroller.scrollTop = sy * r - cy;
+  scroller.scrollLeft = c.L; scroller.scrollTop = c.T;
   showPill();
 }
 
@@ -201,18 +328,16 @@ function setZoom(z, cx, cy) {
 let gz = null, gzRaf = 0, gzTimer = 0;
 function gestureBegin(mx, my) {
   if (curJob) { try { curJob.task.cancel(); } catch { /* 무시 */ } }
-  // P: 첫 쪽 위의 고정 여백. 이 여백은 확대해도 늘어나지 않으므로 기준 높이로 쓴다.
-  const P = pages.length ? pages[0].el.offsetTop : 0;
-  gz = { z0: zoom, sx: scroller.scrollLeft + mx, sy: scroller.scrollTop + my, mx0: mx, my0: my, mx, my, s: 1, P };
+  const sl0 = scroller.scrollLeft, st0 = scroller.scrollTop, a = layoutAt(zoom);
+  gz = { z0: zoom, sl0, st0, a, mx0: mx, my0: my, mx, my, s: 1 };
   pagesEl.style.transition = 'none';
-  pagesEl.style.transformOrigin = `${gz.sx}px ${gz.P}px`;
+  pagesEl.style.transformOrigin = `${a.bx}px ${a.by}px`;
   pagesEl.style.willChange = 'transform';
 }
 // 손가락 밑의 내용이 손가락을 따라가도록 이동량을 계산한다
 function gzTransform() {
-  const tx = gz.mx - gz.mx0;
-  const ty = (gz.my - gz.my0) + (gz.sy - gz.P) * (1 - gz.s);
-  return `translate(${tx}px, ${ty}px) scale(${gz.s})`;
+  const c = anchorCalc(gz.z0, gz.z0 * gz.s, gz.sl0, gz.st0, gz.mx, gz.my);
+  return `translate(${c.b.bx - c.L - gz.a.bx + gz.sl0}px, ${c.b.by - c.T - gz.a.by + gz.st0}px) scale(${gz.s})`;
 }
 function gestureApply() {
   gzRaf = 0;
@@ -229,12 +354,12 @@ function gestureEnd() {
   if (!gz) return;
   clearTimeout(gzTimer); cancelAnimationFrame(gzRaf); gzRaf = 0;
   const g = gz; gz = null;
-  const r = clamp(g.z0 * g.s, MIN_Z, MAX_Z) / g.z0;
+  const z1 = clamp(g.z0 * g.s, MIN_Z, MAX_Z);
+  const c = anchorCalc(g.z0, z1, g.sl0, g.st0, g.mx, g.my);
   pagesEl.style.transition = 'none';
   pagesEl.style.transform = ''; pagesEl.style.willChange = ''; pagesEl.style.transformOrigin = '';
-  zoom = g.z0 * r; applyWidth();
-  scroller.scrollLeft = g.sx * r - g.mx;
-  scroller.scrollTop = g.P + (g.sy - g.P) * r - g.my;
+  zoom = z1; applyWidth();
+  scroller.scrollLeft = c.L; scroller.scrollTop = c.T;
   showPill(); updateIndicator(); scheduleRefresh(60, true); savePosSoon();
 }
 
@@ -261,6 +386,7 @@ function scheduleRefresh(ms, debounce) {
 }
 
 function wanted() {
+  if (paged()) return blockPages();
   const st = scroller.scrollTop, vh = scroller.clientHeight, cy = st + vh / 2;
   const hi = st + vh * 1.6;
   const out = [];
@@ -310,6 +436,7 @@ function refresh() {
   // 멀리 벗어난 페이지의 캔버스는 해제
   const st = scroller.scrollTop, vh = scroller.clientHeight;
   for (const p of [...live]) {
+    if (paged()) { if (!p.el.classList.contains('cur')) freeCanvas(p); continue; }
     const t = p.el.offsetTop, b = t + p.el.offsetHeight;
     if (b < st - vh * 3 || t > st + vh * 4) freeCanvas(p);
   }
@@ -566,10 +693,44 @@ async function openFile(file) {
 }
 fileInput.addEventListener('change', () => openFile(fileInput.files[0]));
 $('#btnOpenBig').addEventListener('click', pickFile);
-$('#btnOpen').addEventListener('click', pickFile);
+
+/* ---------- 편집 화면 (처음 누를 때 불러옴) ---------- */
+let editorMod = null;
+const pdfOpts = (bytes) => ({ data: bytes, cMapUrl: LIB + 'cmaps/', cMapPacked: true, standardFontDataUrl: LIB + 'standard_fonts/', wasmUrl: LIB + 'wasm/', iccUrl: LIB + 'iccs/', isEvalSupported: false });
+function editCtx() {
+  return {
+    h, svg, toast, busy, openSheet, closeSheet, LIB, deliverPdf, libCtx, pdfjs: pdfjsLib, pdfOpts,
+    currentDoc: async () => (pdf && docBuf ? { name: docName, bytes: new Uint8Array(docBuf.slice(0)) } : null),
+    openInViewer: async (bytes, name, o) => {
+      const ok = await openBuffer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), name);
+      if (ok && o && o.stamp) { annoMode(true); setTool('st'); openStampPop(); }
+    },
+  };
+}
+async function openEditorScreen(screen) {
+  try { editorMod = editorMod || await import('./edit.js'); await editorMod.openEditor(editCtx(), screen); }
+  catch (e) { console.error(e); toast('편집 화면을 열지 못했습니다'); }
+}
+$('#btnEdit').addEventListener('click', () => openEditorScreen());
 $('#btnSearch').addEventListener('click', openSearch);
 $('#btnPage').addEventListener('click', openGoto);
-$('#btnInfo').addEventListener('click', openInfo);
+paintViewBtn();
+$('#btnView').addEventListener('click', () => setViewMode(vm === 'scroll' ? 'single' : vm === 'single' ? 'double' : 'scroll'));
+$('#btnFit').addEventListener('click', toggleFit);
+$('#btnMore').addEventListener('click', () => openSheet(() => [
+  h('h3', {}, '더보기'),
+  h('div', { class: 'row' }, h('button', { class: 'pri', onclick: () => { closeSheet(); pickFile(); } }, 'PDF 열기')),
+  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openEditorScreen(); } }, '편집 (쪽 정리·합치기·나누기…)')),
+  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openInfo(); } }, '문서 정보')),
+]));
+$('#btnHome').addEventListener('click', goHome);
+function goHome() {
+  if (an.on) annoMode(false);
+  savePos(); closeDoc();
+  scroller.hidden = true; emptyEl.hidden = false;
+  document.body.classList.add('noDoc'); document.title = 'PDF 뷰어';
+  renderRecent();
+}
 $('#btnDark').addEventListener('click', () => {
   const on = document.body.classList.toggle('dark'); store.set('dark', on);
 });
@@ -601,6 +762,7 @@ if (new URLSearchParams(location.search).has('native')) window.openNativePdf();
 
 // 앱의 뒤로 가기 버튼: 열린 창이 있으면 닫고 true, 없으면 false(앱 종료)
 window.onNativeBack = function () {
+  if (editorMod && editorMod.editorOpen()) { if (!sheet.hidden) { closeSheet(); return true; } return editorMod.editorBack(); }
   if (!sheet.hidden) { closeSheet(); return true; }
   if (an.on) { annoMode(false); return true; }
   return false;
@@ -729,11 +891,7 @@ let lastW = 0;
 new ResizeObserver(() => {
   if (!pdf) return;
   const w = scroller.clientWidth;
-  if (w && lastW && w !== lastW) {
-    const c = currentPos();
-    fit = w; applyWidth(); goPage(c.p, c.f);
-    scheduleRefresh(100, true);
-  }
+  if (w && lastW && w !== lastW) relayout();
   lastW = w;
 }).observe(scroller);
 
@@ -752,7 +910,7 @@ scroller.addEventListener('touchstart', (e) => {
   } else if (e.touches.length === 1) {
     const t = e.touches[0];
     if (an.on && an.tool !== 'hand' && annoBegin(t.clientX, t.clientY)) { tp = { mode: 'draw' }; return; }
-    tp = { mode: 'tap', x: t.clientX, y: t.clientY, t: Date.now(), moved: false };
+    tp = { mode: 'tap', x: t.clientX, y: t.clientY, t: Date.now(), moved: false, ex: t.clientX, ey: t.clientY };
   } else tp = { mode: 'none' };
 }, { passive: true });
 
@@ -768,6 +926,7 @@ scroller.addEventListener('touchmove', (e) => {
   } else if (tp.mode === 'tap') {
     const t = e.touches[0];
     if (Math.hypot(t.clientX - tp.x, t.clientY - tp.y) > 10) tp.moved = true;
+    tp.ex = t.clientX; tp.ey = t.clientY;
   }
 }, { passive: false });
 
@@ -775,6 +934,12 @@ scroller.addEventListener('touchend', (e) => {
   if (tp && tp.mode === 'draw') {
     if (e.cancelable) e.preventDefault();   // 뒤따르는 가짜 클릭이 방금 연 창을 닫지 않게
     annoEnd(); tp = e.touches.length === 0 ? null : { mode: 'none' }; return;
+  }
+  if (tp && tp.mode === 'tap' && tp.moved && paged() && e.touches.length === 0 && !gz) {
+    // 한 쪽씩·두 쪽씩 보기: 옆으로 쓸어 넘기기 (좌우로 밀 수 있게 확대된 상태에서는 이동이 우선)
+    const dx = tp.ex - tp.x, dy = tp.ey - tp.y;
+    if (Math.abs(dx) > 60 && Math.abs(dy) < Math.abs(dx) * 0.7 && Date.now() - tp.t < 700 &&
+        layoutAt(zoom).Wc <= scroller.clientWidth + 1) pageStep(dx < 0 ? 1 : -1);
   }
   if (tp && tp.mode === 'tap' && !tp.moved && Date.now() - tp.t < 350 && e.touches.length === 0) handleTap(tp.x, tp.y);
   if (tp && tp.mode === 'pinch') {
@@ -786,10 +951,16 @@ scroller.addEventListener('touchcancel', () => { if (an.cur) annoAbort(); gestur
 
 function handleTap(x, y) {
   const now = Date.now();
+  if (paged() && !an.on) {          // 가장자리를 누르면 쪽 넘김
+    const w = scroller.clientWidth;
+    if (x < w * 0.2) { clearTimeout(tapTimer); lastTap.t = 0; pageStep(-1); return; }
+    if (x > w * 0.8) { clearTimeout(tapTimer); lastTap.t = 0; pageStep(1); return; }
+  }
   if (now - lastTap.t < 300 && Math.hypot(x - lastTap.x, y - lastTap.y) < 40) {
     clearTimeout(tapTimer); lastTap.t = 0;
     const rc = scroller.getBoundingClientRect();
-    animateZoom(zoom < 1.6 ? 2.5 : 1, x - rc.left, y - rc.top);
+    const base = baseZoom();
+    animateZoom(zoom < base * 1.6 ? base * 2.5 : base, x - rc.left, y - rc.top);
   } else {
     lastTap = { t: now, x, y };
     clearTimeout(tapTimer);
@@ -798,7 +969,7 @@ function handleTap(x, y) {
 }
 function toggleUi() {
   uiHidden = !uiHidden;
-  bar.classList.toggle('hidden', uiHidden); topbar.classList.toggle('hidden', uiHidden);
+  topbar.classList.toggle('hidden', uiHidden);
 }
 
 /* ---------- 마우스·키보드 (PC에서 확인할 때) ---------- */
@@ -812,9 +983,11 @@ scroller.addEventListener('wheel', (e) => {
 window.addEventListener('keydown', (e) => {
   if (!pdf || e.target.tagName === 'INPUT') return;
   const rc = scroller.getBoundingClientRect(), cx = rc.width / 2, cy = rc.height / 2;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') { pageStep(1); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') { pageStep(-1); return; }
   if (e.key === '+' || e.key === '=') { setZoom(zoom * 1.25, cx, cy); scheduleRefresh(150, true); }
   else if (e.key === '-') { setZoom(zoom / 1.25, cx, cy); scheduleRefresh(150, true); }
-  else if (e.key === '0') { setZoom(1, cx, cy); scheduleRefresh(150, true); }
+  else if (e.key === '0') { setZoom(baseZoom(), cx, cy); scheduleRefresh(150, true); }
 });
 
 
@@ -822,19 +995,24 @@ window.addEventListener('keydown', (e) => {
 const SVGNS = 'http://www.w3.org/2000/svg';
 const K = 1000;                                  // 필기 좌표는 쪽 너비를 1로 둔 값, 그릴 때만 K배
 const FONT = 'system-ui, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif';
-const COLORS = {
-  pen: ['#1a1a1a', '#e03131', '#1971c2', '#2f9e44'],
-  hl: ['#ffe066', '#ff8fab', '#8ce99a', '#74c0fc'],
-  tx: ['#1a1a1a', '#e03131', '#1971c2', '#2f9e44'],
-};
-const WIDTHS = { pen: [0.0022, 0.004, 0.0075], hl: [0.016, 0.028], tx: [0.018, 0.026, 0.04] };
+const BASE_COLORS = ['#1a1a1a', '#e03131', '#f59f00', '#fcc419', '#20c997', '#4dabf7', '#1c4eea', '#9c36e8', '#868e96'];
+const RANGE = { pen: [0.001, 0.012, 0.0005], hl: [0.01, 0.05, 0.001], tx: [0.014, 0.07, 0.002] };
+const TOOL_NAME = { pen: '펜', hl: '형광펜', tx: '글자' };
 const an = {
-  on: false, tool: 'pen', cur: null, undo: [],
-  ci: { pen: 0, hl: 0, tx: 0 }, wi: { pen: 1, hl: 0, tx: 1 },
-  data: new Map(),                               // 쪽 번호 -> 글씨·그림 목록
+  on: false, tool: 'pen', cur: null, undo: [], redo: [], pop: null,
+  col: { pen: '#1a1a1a', hl: '#fcc419', tx: '#1a1a1a' }, w: { pen: 0.004, hl: 0.022, tx: 0.026 }, recent: [],
+  data: new Map(),                               // 쪽 번호 -> 글씨·그림·도장 목록
+  imgs: new Map(),                               // 도장 그림 id -> data URL
+  pick: null,                                    // 찍으려고 고른 도장
+  sel: null,                                     // 선택된 도장 { n, it }
 };
+{
+  const v = store.get('annoPrefs', null);
+  if (v) { Object.assign(an.col, v.col || {}); Object.assign(an.w, v.w || {}); an.recent = v.recent || []; }
+}
+const savePrefs = () => store.set('annoPrefs', { col: an.col, w: an.w, recent: an.recent });
 const elOf = new WeakMap();
-const annoBar = $('#annoBar');
+const annoBar = $('#annoBar'), annoPop = $('#annoPop');
 const r4 = (v) => Math.round(v * 10000) / 10000;
 
 function itemsOf(n) {
@@ -863,6 +1041,13 @@ function pathD(p) {
 }
 function itemEl(it) {
   const ns = (t) => document.createElementNS(SVGNS, t);
+  if (it.t === 'img') {
+    const e = ns('image');
+    e.setAttribute('href', an.imgs.get(it.k) || '');
+    e.setAttribute('preserveAspectRatio', 'none');
+    setImgGeom(e, it);
+    return e;
+  }
   if (it.t === 'tx') {
     const e = ns('text');
     e.setAttribute('fill', it.c); e.setAttribute('font-size', it.s * K); e.setAttribute('font-family', FONT);
@@ -883,22 +1068,28 @@ function itemEl(it) {
   else e.setAttribute('stroke-linecap', 'round');
   return e;
 }
+function setImgGeom(e, it) {
+  e.setAttribute('x', it.x * K); e.setAttribute('y', it.y * K);
+  e.setAttribute('width', it.w * K); e.setAttribute('height', it.h * K);
+}
 function renderAnnoPage(p) {
   if (!p) return;
   const items = an.data.get(p.n);
-  if (!items || !items.length) { if (p.svg) p.svg.replaceChildren(); return; }
+  if (!items || !items.length) { if (p.svg) p.svg.replaceChildren(); drawSel(); return; }
   const svg = svgOf(p);
   svg.replaceChildren();
   for (const it of items) { const e = itemEl(it); elOf.set(it, e); svg.append(e); }
+  drawSel();
 }
 function annoReset() {
-  an.data.clear(); an.undo = []; an.cur = null;
+  an.data.clear(); an.imgs.clear(); an.undo = []; an.redo = []; an.cur = null; an.sel = null; an.pick = null;
   clearTimeout(annoTimer);
   updateAnnoUi();
 }
 
-/* 글자 상자(지우개·고치기 판정용) */
-function textBox(it) {
+/* 글자·도장 상자(지우개·고치기 판정용) */
+function bboxOf(it) {
+  if (it.t === 'img') return { x: it.x, y: it.y, w: it.w, h: it.h };
   const lines = it.v.split('\n');
   let w = 0;
   for (const ln of lines) {
@@ -915,8 +1106,8 @@ function segDist(x, y, a, b) {
   return Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy));
 }
 function hitItem(it, x, y, rad) {
-  if (it.t === 'tx') {
-    const b = textBox(it);
+  if (it.t === 'tx' || it.t === 'img') {
+    const b = bboxOf(it);
     return x >= b.x - rad && x <= b.x + b.w + rad && y >= b.y - rad && y <= b.y + b.h + rad;
   }
   const r = rad + it.w / 2, p = it.p;
@@ -925,23 +1116,68 @@ function hitItem(it, x, y, rad) {
   return false;
 }
 
+/* 도장 선택 표시 */
+let selEl = null;
+function drawSel() {
+  if (selEl) { selEl.remove(); selEl = null; }
+  if (!an.sel || !an.on) return;
+  const p = pages[an.sel.n - 1];
+  if (!p || !(an.data.get(an.sel.n) || []).includes(an.sel.it)) { an.sel = null; return; }
+  const it = an.sel.it, ns = (t) => document.createElementNS(SVGNS, t);
+  const g = ns('g');
+  const r = ns('rect');
+  r.setAttribute('x', it.x * K); r.setAttribute('y', it.y * K); r.setAttribute('width', it.w * K); r.setAttribute('height', it.h * K);
+  r.setAttribute('fill', 'none'); r.setAttribute('stroke', '#4dabf7'); r.setAttribute('stroke-width', '1.6');
+  r.setAttribute('stroke-dasharray', '6 4'); r.setAttribute('vector-effect', 'non-scaling-stroke');
+  const c = ns('circle');
+  c.setAttribute('cx', (it.x + it.w) * K); c.setAttribute('cy', (it.y + it.h) * K); c.setAttribute('r', 0.014 * K);
+  c.setAttribute('fill', '#4dabf7'); c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', '1.6'); c.setAttribute('vector-effect', 'non-scaling-stroke');
+  g.append(r, c);
+  svgOf(p).append(g); selEl = g;
+}
+function select(n, it) {
+  const same = an.sel && an.sel.it === it;
+  an.sel = it ? { n, it } : null;
+  if (!same) drawSel();
+}
+
 /* 그리기 */
 function toPt(c, cx, cy) {
   return [r4(clamp((cx - c.r.left) / c.r.width, 0, 1)), r4(clamp((cy - c.r.top) / c.r.width, 0, c.p.ar))];
 }
+const geomOf = (it) => ({ x: it.x, y: it.y, w: it.w, h: it.h });
 function annoBegin(cx, cy) {
   if (!pdf || !pages.length || gz) return false;
-  const rc = scroller.getBoundingClientRect();
-  const p = pages[pageAt(scroller.scrollTop + cy - rc.top)];
+  const p = pageFromPoint(cx, cy);
+  if (!p) return false;
   const r = p.el.getBoundingClientRect();
-  if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom || !r.width) return false;
   const tool = an.tool;
-  const c = { tool, p, r, x0: cx, y0: cy, moved: false, ops: [], raf: 0, it: null, el: null };
+  if (an.pop === 'style') closePop();
+  const c = { tool, p, r, x0: cx, y0: cy, moved: false, ops: [], raf: 0, it: null, el: null, mode: '' };
   an.cur = c;
   if (tool === 'pen' || tool === 'hl') {
-    c.it = { t: tool, c: COLORS[tool][an.ci[tool]], w: WIDTHS[tool][an.wi[tool]], p: [toPt(c, cx, cy)] };
+    c.it = { t: tool, c: an.col[tool], w: an.w[tool], p: [toPt(c, cx, cy)] };
     c.el = itemEl(c.it); svgOf(p).append(c.el);
   } else if (tool === 'er') eraseAt(c, cx, cy);
+  else if (tool === 'st') {
+    const pt = toPt(c, cx, cy), arr = an.data.get(p.n) || [];
+    c.mode = 'place';
+    if (an.sel && an.sel.n === p.n) {
+      const it = an.sel.it;
+      if (Math.hypot(pt[0] - (it.x + it.w), pt[1] - (it.y + it.h)) <= 28 / r.width) {
+        c.mode = 'resize'; c.it = it; c.from = geomOf(it); c.el = elOf.get(it);
+        return true;
+      }
+    }
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const it = arr[i];
+      if (it.t === 'img' && hitItem(it, pt[0], pt[1], 0.004)) {
+        select(p.n, it); openStampPop();
+        c.mode = 'move'; c.it = it; c.from = geomOf(it); c.off = [pt[0] - it.x, pt[1] - it.y]; c.el = elOf.get(it);
+        return true;
+      }
+    }
+  }
   return true;
 }
 function annoMove(cx, cy) {
@@ -954,6 +1190,19 @@ function annoMove(cx, cy) {
     c.it.p.push(pt);
     if (!c.raf) c.raf = requestAnimationFrame(() => { c.raf = 0; c.el.setAttribute('d', pathD(c.it.p)); });
   } else if (c.tool === 'er') eraseAt(c, cx, cy);
+  else if (c.tool === 'st' && c.moved && (c.mode === 'move' || c.mode === 'resize')) {
+    const pt = toPt(c, cx, cy), it = c.it, ar = c.from.h / c.from.w;
+    if (c.mode === 'move') {
+      it.x = r4(clamp(pt[0] - c.off[0], 0, Math.max(0, 1 - it.w)));
+      it.y = r4(clamp(pt[1] - c.off[1], 0, Math.max(0, c.p.ar - it.h)));
+    } else {
+      const w = clamp(pt[0] - it.x, 0.04, 1 - it.x);
+      it.w = r4(w); it.h = r4(Math.min(w * ar, c.p.ar - it.y));
+      it.w = r4(it.h / ar);
+    }
+    if (c.el) setImgGeom(c.el, it);
+    drawSel();
+  }
 }
 function eraseAt(c, cx, cy) {
   const arr = an.data.get(c.p.n);
@@ -964,6 +1213,7 @@ function eraseAt(c, cx, cy) {
     const it = arr[i];
     arr.splice(i, 1);
     const e = elOf.get(it); if (e) e.remove();
+    if (an.sel && an.sel.it === it) { an.sel = null; drawSel(); }
     c.ops.push({ k: 'del', n: c.p.n, it, i });
   }
 }
@@ -983,31 +1233,50 @@ function annoEnd() {
     let idx = -1;
     for (let i = arr.length - 1; i >= 0; i--) if (arr[i].t === 'tx' && hitItem(arr[i], pt[0], pt[1], 0.008)) { idx = i; break; }
     openTextEditor(c.p, pt, idx);
+  } else if (c.tool === 'st') {
+    if (c.mode === 'place' && !c.moved) placeStamp(c.p, toPt(c, c.x0, c.y0));
+    else if ((c.mode === 'move' || c.mode === 'resize') && c.moved) {
+      pushUndo([{ k: 'mod', n: c.p.n, it: c.it, from: c.from, to: geomOf(c.it) }]);
+    }
   }
 }
 function annoAbort() {
   const c = an.cur; an.cur = null;
   if (!c) return;
   if (c.raf) cancelAnimationFrame(c.raf);
-  if (c.el) c.el.remove();
-  if (c.tool === 'er' && c.ops.length) pushUndo(c.ops);
+  if (c.tool === 'pen' || c.tool === 'hl') { if (c.el) c.el.remove(); }
+  else if (c.tool === 'er' && c.ops.length) pushUndo(c.ops);
+  else if (c.tool === 'st' && c.from) { Object.assign(c.it, c.from); if (c.el) setImgGeom(c.el, c.it); drawSel(); }
 }
 function pushUndo(ops) {
-  an.undo.push(ops);
+  an.undo.push(ops); an.redo = [];
   if (an.undo.length > 100) an.undo.shift();
   annoChanged();
 }
-function annoUndo() {
-  const ops = an.undo.pop();
-  if (!ops) { toast('되돌릴 것이 없습니다'); return; }
+function applyOps(ops, back) {
   const touched = new Set();
-  for (let j = ops.length - 1; j >= 0; j--) {
-    const o = ops[j], arr = itemsOf(o.n);
+  const seq = back ? [...ops].reverse() : ops;
+  for (const o of seq) {
+    const arr = itemsOf(o.n);
     touched.add(o.n);
-    if (o.k === 'add') { const i = arr.indexOf(o.it); if (i >= 0) arr.splice(i, 1); }
-    else arr.splice(Math.min(o.i, arr.length), 0, o.it);
+    const remove = (back && o.k === 'add') || (!back && o.k === 'del');
+    if (o.k === 'mod') Object.assign(o.it, back ? o.from : o.to);
+    else if (remove) { const i = arr.indexOf(o.it); if (i >= 0) arr.splice(i, 1); }
+    else if (back) arr.splice(Math.min(o.i, arr.length), 0, o.it);
+    else arr.push(o.it);
   }
   for (const n of touched) renderAnnoPage(pages[n - 1]);
+}
+function annoUndo() {
+  const ops = an.undo.pop();
+  if (!ops) { toast('되돌릴 것이 없습니다', 900); return; }
+  applyOps(ops, true); an.redo.push(ops);
+  annoChanged();
+}
+function annoRedo() {
+  const ops = an.redo.pop();
+  if (!ops) { toast('다시 실행할 것이 없습니다', 900); return; }
+  applyOps(ops, false); an.undo.push(ops);
   annoChanged();
 }
 
@@ -1024,8 +1293,8 @@ function openTextEditor(p, pt, idx) {
       return;
     }
     if (old && old.v === v) return;
-    const s = old ? old.s : WIDTHS.tx[an.wi.tx];
-    const nw = old ? { ...old, v } : { t: 'tx', c: COLORS.tx[an.ci.tx], s, x: r4(clamp(pt[0], 0, 0.9)), y: r4(Math.max(0, pt[1] - s * 0.5)), v };
+    const s = old ? old.s : an.w.tx;
+    const nw = old ? { ...old, v } : { t: 'tx', c: an.col.tx, s, x: r4(clamp(pt[0], 0, 0.9)), y: r4(Math.max(0, pt[1] - s * 0.5)), v };
     const ops = [];
     if (old) { arr.splice(idx, 1); ops.push({ k: 'del', n: p.n, it: old, i: idx }); const e = elOf.get(old); if (e) e.remove(); }
     const e = itemEl(nw); elOf.set(nw, e); svgOf(p).append(e);
@@ -1044,24 +1313,52 @@ function openTextEditor(p, pt, idx) {
   setTimeout(() => ta.focus(), 60);
 }
 
+/* 도장 찍기 */
+function placeStamp(p, pt) {
+  const pk = an.pick;
+  if (!pk) { toast('먼저 아래 창에서 서명이나 도장을 고르세요', 1500); openStampPop(); return; }
+  an.imgs.set(pk.id, pk.url);
+  const w = 0.22, h2 = r4(w * pk.ar);
+  const it = { t: 'img', k: pk.id, w, h: h2, x: r4(clamp(pt[0] - w / 2, 0, 1 - w)), y: r4(clamp(pt[1] - h2 / 2, 0, Math.max(0, p.ar - h2))) };
+  const e = itemEl(it); elOf.set(it, e); svgOf(p).append(e);
+  itemsOf(p.n).push(it);
+  pushUndo([{ k: 'add', n: p.n, it }]);
+  select(p.n, it); openStampPop();
+}
+function deleteSel() {
+  if (!an.sel) return;
+  const { n, it } = an.sel, arr = itemsOf(n), i = arr.indexOf(it);
+  if (i < 0) return;
+  arr.splice(i, 1);
+  const e = elOf.get(it); if (e) e.remove();
+  an.sel = null; drawSel();
+  pushUndo([{ k: 'del', n, it, i }]);
+  openStampPop();
+}
+
 /* 보관 (이 폰의 앱 안, 문서별) */
 let annoTimer = 0;
 function annoChanged() { updateAnnoUi(); clearTimeout(annoTimer); annoTimer = setTimeout(saveAnno, 700); }
 async function saveAnno() {
   clearTimeout(annoTimer);
   if (!pdf) return;
-  const d = [];
-  for (const [n, items] of an.data) if (items.length) d.push([n, items]);
+  const d = [], used = new Set();
+  for (const [n, items] of an.data) if (items.length) { d.push([n, items]); for (const it of items) if (it.t === 'img') used.add(it.k); }
+  const imgs = {};
+  for (const k of used) imgs[k] = an.imgs.get(k);
   try {
-    if (d.length) await idbPut('anno:' + docKey, { v: 1, d });
+    if (d.length) await idbPut('anno:' + docKey, { v: 2, d, imgs });
     else await idbDel('anno:' + docKey);
   } catch (e) { console.warn('필기 보관 실패', e); }
 }
 async function loadAnno() {
-  an.data.clear(); an.undo = [];
+  an.data.clear(); an.imgs.clear(); an.undo = []; an.redo = []; an.sel = null;
   try {
     const v = await idbGet('anno:' + docKey);
-    if (v && v.d) for (const [n, items] of v.d) if (n >= 1 && n <= pages.length) an.data.set(n, items);
+    if (v && v.d) {
+      for (const [n, items] of v.d) if (n >= 1 && n <= pages.length) an.data.set(n, items);
+      for (const [k, u] of Object.entries(v.imgs || {})) an.imgs.set(k, u);
+    }
   } catch (e) { console.warn(e); }
   for (const n of an.data.keys()) renderAnnoPage(pages[n - 1]);
   updateAnnoUi();
@@ -1074,38 +1371,127 @@ function annoMode(on) {
   an.on = on;
   document.body.classList.toggle('anno', on);
   annoBar.hidden = !on;
+  $('#btnAnno').classList.toggle('on', on);
   if (on) {
     if (uiHidden) toggleUi();
     if (an.tool === 'hand') an.tool = 'pen';
-  } else { if (an.cur) annoAbort(); saveAnno(); }
+  } else { if (an.cur) annoAbort(); closePop(); an.sel = null; drawSel(); saveAnno(); }
   updateAnnoUi();
 }
-function setTool(t) { an.tool = t; updateAnnoUi(); }
+function setTool(t) {
+  an.tool = t;
+  if (t !== 'st') { an.sel = null; drawSel(); }
+  updateAnnoUi();
+}
 function updateAnnoUi() {
   document.body.classList.toggle('annoDraw', an.on && an.tool !== 'hand');
-  for (const b of annoBar.querySelectorAll('#aTools button')) b.classList.toggle('on', b.dataset.tool === an.tool);
-  const sw = $('#aSw'), wb = $('#aWidth'), t = an.tool;
-  const colored = t === 'pen' || t === 'hl' || t === 'tx';
-  sw.replaceChildren();
-  if (colored) {
-    COLORS[t].forEach((c, i) => {
-      const b = h('button', { class: i === an.ci[t] ? 'on' : '', 'aria-label': '색' });
-      b.style.background = c;
-      b.addEventListener('click', () => { an.ci[t] = i; updateAnnoUi(); });
-      sw.append(b);
-    });
+  for (const b of annoBar.querySelectorAll('[data-tool]')) {
+    const t = b.dataset.tool;
+    b.classList.toggle('on', t === an.tool);
+    const dot = b.querySelector('.dot');
+    if (dot) dot.style.background = an.col[t];
   }
-  wb.hidden = !colored;
-  if (colored) wb.textContent = `${t === 'tx' ? '크기' : '굵기'} ${an.wi[t] + 1}`;
   $('#aUndo').disabled = !an.undo.length;
+  $('#aRedo').disabled = !an.redo.length;
 }
-for (const b of annoBar.querySelectorAll('#aTools button')) b.addEventListener('click', () => setTool(b.dataset.tool));
-$('#aWidth').addEventListener('click', () => { const t = an.tool; an.wi[t] = (an.wi[t] + 1) % WIDTHS[t].length; updateAnnoUi(); });
+function closePop() { an.pop = null; annoPop.hidden = true; annoPop.replaceChildren(); }
+
+// 펜·형광펜·글자의 색과 굵기 창
+function openStylePop() {
+  const t = an.tool;
+  if (!TOOL_NAME[t]) return;
+  an.pop = 'style';
+  const [mn, mx, st] = RANGE[t];
+  const pv = h('div', { class: 'pv' });
+  const paintPv = () => {
+    pv.replaceChildren();
+    if (t === 'tx') {
+      const sp = h('span', {}, '가나다 Abc 123');
+      sp.style.cssText = `font-size:${Math.round(an.w.tx * 400)}px;color:${an.col.tx};font-family:${FONT}`;
+      pv.append(sp);
+    } else {
+      const i = h('i');
+      i.style.cssText = `height:${Math.max(2, an.w[t] * 400)}px;background:${an.col[t]};${t === 'hl' ? 'opacity:.4' : ''}`;
+      pv.append(i);
+    }
+  };
+  const sw = h('div', { class: 'sw' });
+  for (const c of [...BASE_COLORS, ...an.recent]) {
+    const b = h('button', { class: c === an.col[t] ? 'on' : '', 'aria-label': '색 ' + c });
+    b.style.background = c;
+    b.addEventListener('click', () => { an.col[t] = c; savePrefs(); updateAnnoUi(); openStylePop(); });
+    sw.append(b);
+  }
+  const ci = h('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(an.col[t]) ? an.col[t] : '#000000' });
+  ci.addEventListener('input', () => { an.col[t] = ci.value; updateAnnoUi(); paintPv(); });
+  ci.addEventListener('change', () => {
+    an.col[t] = ci.value;
+    if (!BASE_COLORS.includes(ci.value)) an.recent = [ci.value, ...an.recent.filter((x) => x !== ci.value)].slice(0, 5);
+    savePrefs(); updateAnnoUi(); openStylePop();
+  });
+  sw.append(h('label', { class: 'cw', 'aria-label': '직접 고르기' }, ci));
+  const rg = h('input', { type: 'range', min: String(mn), max: String(mx), step: String(st), value: String(an.w[t]) });
+  rg.addEventListener('input', () => { an.w[t] = Number(rg.value); paintPv(); });
+  rg.addEventListener('change', savePrefs);
+  const x = h('button', { class: 'ib', 'aria-label': '닫기' });
+  x.innerHTML = svg('close', 20); x.addEventListener('click', closePop);
+  annoPop.replaceChildren(
+    h('div', { class: 'ph' }, h('span', {}, `${TOOL_NAME[t]} 색상`), x),
+    sw,
+    h('div', { class: 'wl' }, h('span', {}, t === 'tx' ? '크기' : '굵기'), rg),
+    pv);
+  annoPop.hidden = false;
+  paintPv();
+}
+
+// 서명·도장 창: 보관함에서 고르고, 새로 만들고, 선택한 도장을 지운다
+async function openStampPop() {
+  an.pop = 'stamp';
+  const mod = await import('./stamps.js');
+  if (an.pop !== 'stamp') return;
+  const list = await mod.loadLib(libCtx());
+  if (an.pop !== 'stamp') return;
+  const x = h('button', { class: 'ib', 'aria-label': '닫기' });
+  x.innerHTML = svg('close', 20); x.addEventListener('click', closePop);
+  const row = h('div', { class: 'sgrid' });
+  for (const it of list) {
+    const b = h('button', { class: 'sthumb' + (an.pick && an.pick.id === it.id ? ' on' : ''), 'aria-label': it.name });
+    const im = h('img', { src: it.url, alt: it.name });
+    b.append(im);
+    b.addEventListener('click', () => { an.pick = it; openStampPop(); toast('찍을 곳을 누르세요', 1200); });
+    row.append(b);
+  }
+  if (!list.length) row.append(h('div', { class: 'sempty' }, '보관된 서명·도장이 없습니다. 아래에서 만들어 주세요.'));
+  const mk = (label, fn) => h('button', { class: 'sbtn', onclick: () => fn() }, label);
+  const done = (it) => { an.pick = it; openStampPop(); };
+  annoPop.replaceChildren(
+    h('div', { class: 'ph' }, h('span', {}, '서명·도장'), x),
+    row,
+    h('div', { class: 'srow' },
+      mk('서명 그리기', () => mod.makeSignature(libCtx(), done)),
+      mk('글자 도장', () => mod.makeStamp(libCtx(), done)),
+      mk('사진 가져오기', () => mod.importImage(libCtx(), done))),
+    an.sel ? h('div', { class: 'srow' },
+      mk('선택한 도장 지우기', deleteSel),
+      mk('선택 해제', () => { select(0, null); openStampPop(); })) : '');
+  annoPop.hidden = false;
+}
+function libCtx() { return { h, toast, busy, idbGet, idbPut, clamp, FONT, svg, BASE_COLORS, openSheet, closeSheet }; }
+
+for (const b of annoBar.querySelectorAll('[data-tool]')) {
+  b.addEventListener('click', () => {
+    const t = b.dataset.tool;
+    if (t === an.tool && TOOL_NAME[t]) { if (an.pop === 'style') closePop(); else openStylePop(); return; }
+    if (t === an.tool && t === 'st') { if (an.pop === 'stamp') closePop(); else openStampPop(); return; }
+    closePop(); setTool(t);
+    if (t === 'st') openStampPop();
+  });
+}
 $('#aUndo').addEventListener('click', annoUndo);
+$('#aRedo').addEventListener('click', annoRedo);
 $('#aDone').addEventListener('click', () => annoMode(false));
 $('#aSave').addEventListener('click', exportPdf);
-$('#btnAnno').addEventListener('click', () => annoMode(true));
-
+$('#btnAnno').addEventListener('click', () => annoMode(!an.on));
 
 /* ---------- 필기를 PDF에 합쳐 저장 ---------- */
 async function exportPdf() {
@@ -1121,6 +1507,7 @@ async function exportPdf() {
     const doc = await PDFDocument.load(src, { updateMetadata: false });
     const col = (c) => rgb(parseInt(c.slice(1, 3), 16) / 255, parseInt(c.slice(3, 5), 16) / 255, parseInt(c.slice(5, 7), 16) / 255);
     const f2 = (v) => Math.round(v * 100) / 100;
+    const embedded = new Map();
     for (const [pn, items] of an.data) {
       if (!items.length || pn > doc.getPageCount()) continue;
       busy(`PDF로 저장하는 중 ${pn}쪽`);
@@ -1129,6 +1516,12 @@ async function exportPdf() {
       const P = (x, y) => vp.convertToPdfPoint(x * W, y * W);   // 화면 좌표 -> PDF 좌표 (회전·잘림 반영)
       const page = doc.getPage(pn - 1);
       for (const it of items) {
+        if (it.t === 'img') {
+          let em = embedded.get(it.k);
+          if (!em) { em = await doc.embedPng(dataUrlBytes(an.imgs.get(it.k))); embedded.set(it.k, em); }
+          drawImageRect(page, em, it.x, it.y, it.w, it.h, P, degrees);
+          continue;
+        }
         if (it.t === 'tx') { await drawTextImage(doc, page, it, P, degrees); continue; }
         const q = it.p.map(([x, y]) => { const [a, b] = P(x, y); return [a, -b]; });   // drawSvgPath는 y를 뒤집어 쓴다
         let d = `M${f2(q[0][0])} ${f2(q[0][1])}`;
@@ -1169,7 +1562,18 @@ async function drawTextImage(doc, page, it, P, degrees) {
   const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
   const img = await doc.embedPng(new Uint8Array(await blob.arrayBuffer()));
   const u = it.s / px;                                        // 캔버스 1px = 쪽 너비 기준 u
-  const tl = P(it.x, it.y), tr = P(it.x + cv.width * u, it.y), bl = P(it.x, it.y + cv.height * u);
+  drawImageRect(page, img, it.x, it.y, cv.width * u, cv.height * u, P, degrees);
+}
+
+function dataUrlBytes(u) {
+  const bin = atob(u.slice(u.indexOf(',') + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+// 쪽 너비를 1로 둔 사각형(x, y, w, h)에 그림을 얹는다. 회전된 쪽도 맞게 놓인다.
+function drawImageRect(page, img, x, y, w, h, P, degrees) {
+  const tl = P(x, y), tr = P(x + w, y), bl = P(x, y + h);
   page.drawImage(img, {
     x: bl[0], y: bl[1],
     width: Math.hypot(tr[0] - tl[0], tr[1] - tl[1]), height: Math.hypot(bl[0] - tl[0], bl[1] - tl[1]),
@@ -1203,7 +1607,7 @@ async function deliverPdf(bytes, name) {
 }
 
 // 시험·점검용으로 바깥에서 상태를 볼 수 있게 노출
-window.__pdfv = { get zoom() { return zoom; }, get pages() { return pages; }, get live() { return live; }, setZoom, refresh, goPage, openBuffer, an, annoMode, annoSaveNow: () => saveAnno(), exportPdf };
+window.__pdfv = { get zoom() { return zoom; }, get pages() { return pages; }, get live() { return live; }, setZoom, refresh, goPage, openBuffer, an, annoMode, annoSaveNow: () => saveAnno(), exportPdf, setViewMode, pageStep, toggleFit, layoutAt, get vm() { return vm; }, get blk() { return blk; }, get fit() { return fit; } };
 
 // 서비스 워커 (오프라인 보관)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
