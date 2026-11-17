@@ -2,11 +2,15 @@ package kr.jayt.pdfviewer;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.ParcelFileDescriptor;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
@@ -20,6 +24,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -42,9 +47,75 @@ public class MainActivity extends Activity {
     private FileChannel channel;
     private String pdfName = "";
     private long pdfSize = 0;
+    private OutputStream saveOut;
+    private Uri saveUri;
+
+    /** 저장 마무리. ok면 파일을 확정하고 이름을 돌려주고, 아니면 만들다 만 파일을 지운다. */
+    private String closeSave(boolean ok) {
+        String result = "";
+        try { if (saveOut != null) saveOut.close(); } catch (IOException ignored) { }
+        saveOut = null;
+        if (saveUri != null) {
+            try {
+                if (ok) {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Downloads.IS_PENDING, 0);
+                    getContentResolver().update(saveUri, v, null, null);
+                    Cursor c = getContentResolver().query(saveUri, new String[]{MediaStore.Downloads.DISPLAY_NAME}, null, null, null);
+                    if (c != null) { if (c.moveToFirst()) result = c.getString(0); c.close(); }
+                } else getContentResolver().delete(saveUri, null, null);
+            } catch (Exception ignored) { }
+            saveUri = null;
+        }
+        return result;
+    }
 
     /** 웹앱에서 window.PdfNative 로 보이는 통로 */
     private class Bridge {
+        /** 필기를 합친 PDF를 다운로드 폴더에 저장 (안드로이드 10 이상) */
+        @JavascriptInterface
+        public boolean saveStart(String name) {
+            synchronized (lock) {
+                closeSave(false);
+                if (Build.VERSION.SDK_INT < 29) return false;
+                try {
+                    String n = name == null ? "문서.pdf" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+                    if (!n.toLowerCase().endsWith(".pdf")) n += ".pdf";
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.Downloads.DISPLAY_NAME, n);
+                    v.put(MediaStore.Downloads.MIME_TYPE, "application/pdf");
+                    v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                    v.put(MediaStore.Downloads.IS_PENDING, 1);
+                    saveUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                    if (saveUri == null) return false;
+                    saveOut = getContentResolver().openOutputStream(saveUri);
+                    return saveOut != null;
+                } catch (Exception e) {
+                    closeSave(false);
+                    return false;
+                }
+            }
+        }
+
+        @JavascriptInterface
+        public boolean saveChunk(String b64) {
+            synchronized (lock) {
+                if (saveOut == null) return false;
+                try {
+                    saveOut.write(Base64.decode(b64, Base64.DEFAULT));
+                    return true;
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+        }
+
+        /** 성공하면 저장된 파일 이름, 실패하면 빈 문자열 */
+        @JavascriptInterface
+        public String saveEnd(boolean ok) {
+            synchronized (lock) { return closeSave(ok); }
+        }
+
         @JavascriptInterface
         public String name() {
             synchronized (lock) { return pdfName; }

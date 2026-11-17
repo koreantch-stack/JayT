@@ -120,3 +120,29 @@ body.noDoc #bar, body.noDoc #topbar { display: none; }
 #hits li { padding: 11px 4px; border-bottom: 1px solid #ffffff14; font-size: 14px; line-height: 1.5; }
 #hits li b { color: var(--accent); font-weight: 700; }
 #hits li .pn { display: inline-block; min-width: 46px; color: var(--muted); font-size: 12px; }
+
+/* 필기 */
+.page svg.ann { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: hidden; }
+body.annoDraw #scroller { touch-action: none; }
+body.anno #bar { display: none; }
+body.anno #pages { padding-bottom: calc(130px + var(--safe-b)); }
+#annoBar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 12;
+  background: var(--bar); backdrop-filter: blur(8px); padding: 6px 8px calc(6px + var(--safe-b));
+}
+#annoBar .arow { display: flex; align-items: center; gap: 4px; justify-content: space-between; min-height: 44px; }
+#annoBar button {
+  border: 0; background: transparent; color: var(--fg); font-family: inherit; font-size: 14px;
+  padding: 9px 8px; border-radius: 10px; flex: none; white-space: nowrap;
+}
+#annoBar button:active { background: #ffffff1f; }
+#aTools button { flex: 1; padding: 10px 4px; }
+#aTools button.on { background: var(--accent); color: #222; font-weight: 700; }
+#aSw { display: flex; gap: 6px; align-items: center; }
+#aSw button { width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 2px solid #ffffff40; }
+#aSw button.on { border-color: #fff; box-shadow: 0 0 0 2px #000a; }
+#annoBar button:disabled { opacity: .35; }
+#sheet textarea {
+  flex: 1; min-width: 0; padding: 12px 14px; font-size: 16px; border-radius: 10px; border: 1px solid #ffffff2a;
+  background: #1a1c20; color: var(--fg); font-family: inherit; resize: none;
+}
