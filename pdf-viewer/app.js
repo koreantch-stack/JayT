@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.3.1';
+const VERSION = '1.4.0';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
@@ -553,11 +553,23 @@ function openGoto() {
 }
 
 function openInfo() {
+  const sec = (t, ...ps) => [h('h4', {}, t), ...ps.map((x) => h('p', {}, x))];
   openSheet(() => [
     h('h3', {}, `PDF 도깨비 ${VERSION}`),
-    h('p', {}, '두 번 탭하면 확대·원래 크기로 바뀌고, 두 손가락으로 벌리면 원하는 만큼 확대됩니다. 확대할 때마다 그 배율로 다시 그려서 글자가 흐려지지 않습니다.'),
-    h('p', {}, '한 번 탭하면 위아래 메뉴가 숨겨지거나 나타납니다. 읽던 쪽은 문서마다 기억합니다.'),
-    h('p', {}, '스캔본이나 사진으로 만든 PDF는 원본 해상도 이상으로는 선명해지지 않습니다.'),
+    h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); checkUpdate(true); } }, '앱 업데이트 확인')),
+    ...sec('만든 사람', '재T (JayT)'),
+    ...sec('사용 범위',
+      '광고와 회원가입 없이 무료로 쓰는 개인·교육용 앱입니다.',
+      '열고 편집하는 파일은 이 폰 안에서만 처리하며 서버로 보내지 않습니다. 필기, 도장, 최근 문서도 이 폰 안에만 보관합니다.',
+      '편집한 결과물의 내용과 사용에 대한 책임은 사용하는 사람에게 있습니다. 암호가 걸린 PDF는 편집할 수 없습니다.'),
+    ...sec('사용법',
+      '두 번 탭하면 확대·원래 크기로 바뀌고, 두 손가락으로 벌리면 원하는 만큼 확대됩니다. 확대할 때마다 그 배율로 다시 그려서 글자가 흐려지지 않습니다.',
+      '한 번 탭하면 위아래 메뉴가 숨겨지거나 나타납니다. 읽던 쪽은 문서마다 기억합니다.',
+      '필기는 위쪽 연필 버튼, 쪽 정리·합치기·나누기·사진 변환·서명 보관은 시작 화면이나 더보기의 편집에서 합니다. 결과는 다운로드 폴더에 새 파일로 저장되고 원본은 그대로입니다.',
+      '스캔본이나 사진으로 만든 PDF는 원본 해상도 이상으로는 선명해지지 않습니다.'),
+    ...sec('사용한 프로그램',
+      'pdf.js (Mozilla, Apache License 2.0) : PDF 화면 표시',
+      'pdf-lib (Andrew Dillon, MIT License) : PDF 저장·편집'),
     h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => closeSheet() }, '닫기')),
   ]);
 }
@@ -727,8 +739,7 @@ $('#btnMore').addEventListener('click', () => openSheet(() => [
   h('h3', {}, '더보기'),
   h('div', { class: 'row' }, h('button', { class: 'pri', onclick: () => { closeSheet(); pickFile(); } }, 'PDF 열기')),
   h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openEditorScreen(); } }, '편집 (쪽 정리·합치기·나누기…)')),
-  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openInfo(); } }, '문서 정보')),
-  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); checkUpdate(true); } }, '앱 업데이트 확인')),
+  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openInfo(); } }, '앱 정보')),
 ]));
 $('#btnHome').addEventListener('click', goHome);
 function goHome() {

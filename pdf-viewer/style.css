@@ -244,3 +244,5 @@ body.anno.vm-single #pages, body.anno.vm-double #pages { padding-bottom: calc(64
 .sitem .sbox img { max-width: 90%; max-height: 90%; }
 .sitem .ib { position: absolute; right: 2px; top: 2px; background: #0007; }
 body.inEditor #topbar, body.inEditor #annoBar { visibility: hidden; }
+
+#sheet h4 { margin: 16px 0 2px; font-size: 13px; color: var(--accent); font-weight: 700; }
