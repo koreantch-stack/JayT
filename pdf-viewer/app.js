@@ -520,18 +520,36 @@ $('#btnDark').addEventListener('click', () => {
   const on = document.body.classList.toggle('dark'); store.set('dark', on);
 });
 
-// 안드로이드 앱이 PDF를 넘겨줄 때 (파일 관리자에서 PDF를 누른 경우)
+// 안드로이드 앱이 PDF를 넘겨줄 때 (파일 관리자에서 PDF를 누른 경우, 열기 버튼으로 고른 경우)
+// 앱이 PdfNative라는 이름으로 파일 읽기 통로를 열어 두고, 여기서 조각 단위로 받아 합친다.
 window.openNativePdf = async function () {
+  const N = window.PdfNative;
+  if (!N) { toast('앱 안에서만 쓸 수 있습니다'); return; }
   busy('파일 받는 중...');
   try {
-    const res = await fetch('./__native/current.pdf?t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) throw new Error('native ' + res.status);
-    let name = '문서.pdf';
-    try { name = decodeURIComponent(res.headers.get('X-File-Name') || '') || name; } catch { /* 무시 */ }
-    await openBuffer(await res.arrayBuffer(), name);
+    const size = Number(N.size());
+    const name = N.name() || '문서.pdf';
+    if (!size) throw new Error('빈 파일');
+    const out = new Uint8Array(size);
+    const CH = 3 * 256 * 1024;   // 3의 배수여야 조각마다 base64가 끊김 없이 이어진다
+    for (let off = 0; off < size; off += CH) {
+      const len = Math.min(CH, size - off);
+      const b64 = N.chunk(off, len);
+      if (!b64) throw new Error('읽기 실패');
+      const buf = await (await fetch('data:application/octet-stream;base64,' + b64)).arrayBuffer();
+      out.set(new Uint8Array(buf), off);
+      busy(`파일 받는 중 ${Math.round((off + len) / size * 100)}%`);
+    }
+    await openBuffer(out.buffer, name);
   } catch (e) { busy(''); toast('파일을 받지 못했습니다'); console.error(e); }
 };
 if (new URLSearchParams(location.search).has('native')) window.openNativePdf();
+
+// 앱의 뒤로 가기 버튼: 열린 창이 있으면 닫고 true, 없으면 false(앱 종료)
+window.onNativeBack = function () {
+  if (!sheet.hidden) { closeSheet(); return true; }
+  return false;
+};
 
 // 데스크톱 크롬에 설치했을 때 "연결 프로그램"으로 열기
 if ('launchQueue' in window) {

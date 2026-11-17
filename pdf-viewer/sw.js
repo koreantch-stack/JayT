@@ -1,6 +1,6 @@
 // 화면 파일은 온라인이면 항상 최신으로 받고(수정 즉시 반영), 오프라인이면 저장해 둔 것을 씁니다.
 // lib/ 안의 pdf.js와 글꼴 데이터는 바뀌지 않으므로 한 번 받으면 계속 저장본을 씁니다.
-const CACHE = 'pdfv-v1';
+const CACHE = 'pdfv-v2';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png',
   'lib/pdf.min.mjs', 'lib/pdf.worker.min.mjs'];
 
@@ -21,7 +21,6 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
-  if (url.pathname.includes('/__native/')) return; // 앱이 넘겨주는 PDF 파일은 건드리지 않음
 
   if (url.pathname.includes('/lib/')) {
     e.respondWith(
