@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
@@ -41,7 +41,7 @@ function toast(msg, ms = 2400) {
 function busy(msg) { busyEl.textContent = msg || ''; busyEl.hidden = !msg; }
 
 /* ---------- 상태 ---------- */
-let pdf = null, pages = [], fit = 0, zoom = 1, docKey = '', docName = '', docBuf = null;
+let pdf = null, pdfTask = null, pages = [], fit = 0, zoom = 1, docKey = '', docName = '', docBuf = null;
 const live = new Set();            // 캔버스를 가진 페이지
 let curJob = null, pumping = false;
 let uiHidden = false;
@@ -79,7 +79,7 @@ async function openBuffer(buf, name, fromStore) {
     return false;
   }
   closeDoc();
-  pdf = doc; docName = name || '문서.pdf'; docBuf = copyForEdit;
+  pdf = doc; pdfTask = task; docName = name || '문서.pdf'; docBuf = copyForEdit;
   docKey = (doc.fingerprints && doc.fingerprints[0]) || docName;
 
   const n = doc.numPages;
@@ -132,7 +132,11 @@ function closeDoc() {
   if (curJob) { try { curJob.task.cancel(); } catch { /* 무시 */ } curJob = null; }
   for (const p of pages) freeCanvas(p);
   pagesEl.replaceChildren(); pages = []; live.clear(); shown = [];
-  if (pdf) { pdf.destroy().catch(() => {}); pdf = null; }
+  if (pdf) {
+    const t = pdfTask; pdfTask = null;
+    try { const r = t && t.destroy ? t.destroy() : (pdf.destroy ? pdf.destroy() : null); if (r && r.catch) r.catch(() => {}); } catch { /* 무시 */ }
+    pdf = null;
+  }
   docBuf = null;
   hl.rects.clear(); hl.stamp++; searchRun++; textCache.clear();
   annoReset();
