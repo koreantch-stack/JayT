@@ -55,9 +55,10 @@ body.dark .hlbox { mix-blend-mode: normal; background: rgba(255, 204, 0, .30); }
 #recentBox { margin-top: 32px; text-align: left; }
 #recentBox h2 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
 #recentList { list-style: none; margin: 0; padding: 0; }
-#recentList li { padding: 12px 4px; border-bottom: 1px solid #ffffff14; font-size: 15px; display: flex; justify-content: space-between; gap: 12px; }
-#recentList li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#recentList li span:last-child { color: var(--muted); font-size: 13px; flex: none; }
+#recentList li { padding: 12px 4px; border-bottom: 1px solid #ffffff14; font-size: 15px; display: flex; align-items: center; gap: 12px; }
+#recentList .rname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#recentList .rpage { color: var(--muted); font-size: 13px; flex: none; }
+#recentList .delBtn { flex: none; border: 1px solid #ffffff2a; background: transparent; color: var(--muted); font-size: 12px; padding: 6px 10px; border-radius: 8px; font-family: inherit; }
 
 /* 바 */
 #topbar, #bar {

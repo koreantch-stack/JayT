@@ -50,9 +50,11 @@ document.body.classList.toggle('dark', !!store.get('dark', false));
 document.body.classList.add('noDoc');
 
 /* ---------- 문서 열기 ---------- */
-async function openBuffer(buf, name) {
+async function openBuffer(buf, name, fromStore) {
   closeSheet();
   busy('불러오는 중...');
+  // pdf.js가 데이터를 가져가 버리므로, 보관할 사본은 먼저 떠 둔다
+  const keep = (!fromStore && buf.byteLength <= KEEP_MAX) ? buf.slice(0) : null;
   let doc, task;
   try {
     task = pdfjsLib.getDocument({
@@ -113,6 +115,7 @@ async function openBuffer(buf, name) {
   scroller.scrollLeft = 0;
   busy('');
   updateIndicator(); refresh(); saveRecent();
+  if (keep) keepCopy(docKey, docName, keep);
   return true;
 }
 
@@ -607,20 +610,87 @@ if ('launchQueue' in window) {
   });
 }
 
-/* ---------- 최근 문서 ---------- */
+/* ---------- 최근 문서 (열어 본 PDF는 이 앱 안에 보관) ---------- */
+const KEEP_MAX = 40 * 1024 * 1024;   // 이보다 큰 파일은 보관하지 않음
+const KEEP_COUNT = 6;                // 최근 이만큼만 보관
+
+function idb() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open('pdfv-files', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('f');
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+async function idbDo(mode, fn) {
+  const db = await idb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('f', mode);
+    const req = fn(tx.objectStore('f'));
+    tx.oncomplete = () => { db.close(); resolve(req && req.result); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+    tx.onabort = () => { db.close(); reject(tx.error); };
+  });
+}
+const idbPut = (k, v) => idbDo('readwrite', (st) => st.put(v, k));
+const idbGet = (k) => idbDo('readonly', (st) => st.get(k));
+const idbDel = (k) => idbDo('readwrite', (st) => st.delete(k));
+
+async function keepCopy(key, name, buf) {
+  try {
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    await idbPut(key, { name, buf });
+    const list = store.get('recent', []);
+    const r = list.find((x) => x.k === key);
+    if (r) r.s = true;
+    let n = 0;
+    for (const x of list) {              // 최근 순서대로 KEEP_COUNT개만 남기고 나머지는 지움
+      if (!x.s) continue;
+      if (++n > KEEP_COUNT) { x.s = false; idbDel(x.k).catch(() => {}); }
+    }
+    store.set('recent', list);
+  } catch (e) { console.warn('보관 실패', e); }
+}
+
 function saveRecent() {
-  const list = store.get('recent', []).filter((r) => r.k !== docKey);
-  list.unshift({ k: docKey, name: docName, n: pages.length, p: currentPos().p, t: Date.now() });
+  const all = store.get('recent', []);
+  const old = all.find((r) => r.k === docKey);
+  const list = all.filter((r) => r.k !== docKey);
+  list.unshift({ k: docKey, name: docName, n: pages.length, p: currentPos().p, t: Date.now(), s: !!(old && old.s) });
   store.set('recent', list.slice(0, 15));
 }
+
+async function openRecent(r) {
+  if (r.s) {
+    busy('불러오는 중...');
+    try {
+      const v = await idbGet(r.k);
+      if (v && v.buf) { await openBuffer(v.buf, v.name || r.name, true); return; }
+    } catch (e) { console.warn(e); }
+    busy('');
+    const list = store.get('recent', []);
+    const x = list.find((q) => q.k === r.k);
+    if (x) { x.s = false; store.set('recent', list); }
+  }
+  toast(`'${r.name}' 파일을 골라 주세요`); pickFile();
+}
+
 function renderRecent() {
   const list = store.get('recent', []);
   const box = $('#recentBox'), ul = $('#recentList');
   ul.replaceChildren();
   box.hidden = !list.length;
   for (const r of list) {
-    const li = h('li', {}, h('span', {}, r.name), h('span', {}, `${r.p}/${r.n}쪽`));
-    li.addEventListener('click', () => { toast(`'${r.name}' 파일을 골라 주세요`); pickFile(); });
+    const del = h('button', { class: 'delBtn' }, '삭제');
+    del.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const rest = store.get('recent', []).filter((q) => q.k !== r.k);
+      store.set('recent', rest); store.set('pos:' + r.k, null);
+      idbDel(r.k).catch(() => {});
+      renderRecent();
+    });
+    const li = h('li', {}, h('span', { class: 'rname' }, r.name), h('span', { class: 'rpage' }, `${r.p}/${r.n}쪽`), del);
+    li.addEventListener('click', () => openRecent(r));
     ul.append(li);
   }
 }
