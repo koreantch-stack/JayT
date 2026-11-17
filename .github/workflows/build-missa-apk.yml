@@ -1,0 +1,48 @@
+name: 가톨릭 미사 APK 만들기
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apk-missa/**'
+      - '.github/workflows/build-missa-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: APK 빌드
+        working-directory: apk-missa
+        run: gradle --no-daemon -Pvc=${{ github.run_number }} assembleRelease
+
+      - name: 파일 이름 정리
+        run: cp apk-missa/app/build/outputs/apk/release/app-release.apk CatholicMissa.apk
+
+      - name: 내려받기용 릴리스에 올리기
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete missa-apk-latest --yes --cleanup-tag || true
+          gh release create missa-apk-latest CatholicMissa.apk \
+            --title "가톨릭 미사 APK (최신)" \
+            --notes "폰에서 CatholicMissa.apk 를 눌러 설치하세요. 빌드 번호 ${{ github.run_number }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CatholicMissa-apk
+          path: CatholicMissa.apk

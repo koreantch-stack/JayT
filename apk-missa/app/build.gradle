@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'kr.jayt.missa'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'kr.jayt.missa'
+        minSdk 24
+        targetSdk 34
+        versionCode Integer.parseInt((project.findProperty('vc') ?: '1').toString())
+        versionName '1.0'
+    }
+
+    // PDF 도깨비와 같은 서명 파일을 씁니다 (저장소 apk/ 폴더에 있음)
+    signingConfigs {
+        release {
+            storeFile file('../../apk/pdfviewer.keystore')
+            storePassword 'pdfviewer'
+            keyAlias 'pdfviewer'
+            keyPassword 'pdfviewer'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}

@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>매일미사</title>
+<title>가톨릭 미사</title>
+<meta name="theme-color" content="#5a0a1a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="가톨릭 미사">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
 :root{--tfs:22px;--bg:#fffdf6;--ink:#141414;--sub:#555;--line:#cfc8b4;--btn:#1f3a5f;--btnink:#fff;--accent:#8a1c1c;--soft:#f1ecdc}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -318,7 +324,7 @@ function renderHome(){
   const tk=todayKey(), W=winYMs();
   if(viewYM<W[0])viewYM=W[0]; if(viewYM>W[2])viewYM=W[2];
   const Y=Math.floor(viewYM/100), M=viewYM%100, has=hasMonth(viewYM);
-  let h='<div class="top"><h1>'+M+'월 매일미사</h1></div>';
+  let h='<div class="top"><h1>가톨릭 미사</h1></div>';
   if(DATA[tk]) h+='<div class="today"><button class="btn" onclick="go(\''+tk+'\')">오늘 미사 보기 ('+parseInt(tk.slice(4,6))+'월 '+parseInt(tk.slice(6))+'일)</button></div>';
   h+='<div class="mnav"><button class="mb" '+(viewYM<=W[0]?'disabled':'onclick="setMonth('+addM(viewYM,-1)+')"')+' aria-label="이전 달">◀</button><div class="mt">'+Y+'년 '+M+'월</div><button class="mb" '+(viewYM>=W[2]?'disabled':'onclick="setMonth('+addM(viewYM,1)+')"')+' aria-label="다음 달">▶</button></div>';
   if(!has){h+='<div class="prep">'+Y+'년 '+M+'월 매일미사는 준비 중입니다.<br>준비가 끝나면 이곳에서 볼 수 있습니다.</div>';}
@@ -381,7 +387,7 @@ function renderDay(k){
   if(!S[state.tab]) state.tab=MAIN.find(x=>S[x])||Object.keys(S)[0];
   viewYM=+k.slice(0,6);
   const prev=shift(k,-1), next=shift(k,1);
-  let h='<div class="top"><h1>매일미사</h1></div>';
+  let h='<div class="top"><h1>가톨릭 미사</h1></div>';
   h+='<div class="bar"><button class="btn alt" onclick="goHome()">달력</button>'+
      '<button class="btn alt" '+(DATA[prev]&&prev>=todayKey()?'onclick="go(\''+prev+'\')"':'disabled style="opacity:.35"')+'>◀ 전날</button>'+
      '<button class="btn alt" '+(DATA[next]?'onclick="go(\''+next+'\')"':'disabled style="opacity:.35"')+'>다음날 ▶</button></div>';
