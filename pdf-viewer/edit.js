@@ -52,8 +52,10 @@ function pickFiles(accept, multiple) {
   return new Promise((resolve) => {
     const fi = C.h('input', { type: 'file', accept: accept + ',.pdfedit' });   // .pdfedit: 앱이 고른 파일을 웹에 그대로 돌려주라는 표시
     if (multiple) fi.multiple = true;
-    fi.addEventListener('change', () => resolve([...fi.files]));
-    fi.addEventListener('cancel', () => resolve([]));
+    const done = (v) => { window.__editPick = null; resolve(v); };
+    fi.addEventListener('change', () => done([...fi.files]));
+    fi.addEventListener('cancel', () => done([]));
+    if (!multiple && /pdf/.test(accept)) window.__editPick = done;   // 앱이 옛 방식으로 파일을 넘겨줄 때 받는 통로
     fi.click();
   });
 }
@@ -95,6 +97,7 @@ function home() {
       card('merge', '합치기', '여러 PDF를 하나로', () => screens.merge()),
       card('split', '나누기', '범위별로 따로 저장', () => screens.split()),
       card('image', '사진으로 PDF', '사진·스캔을 묶기', () => screens.photos()),
+      card('camera', 'PDF를 사진으로', '쪽마다 이미지로 저장', () => screens.toimg()),
       card('stamp', '서명·도장', '보관함과 문서에 찍기', () => screens.sign())),
     h('p', { class: 'ed-note' }, '결과는 다운로드 폴더에 새 파일로 저장되고 원본은 그대로 둡니다.'),
   ]);
@@ -470,3 +473,71 @@ screens.sign = async () => {
   ]);
   draw();
 };
+
+/* ---------- PDF를 사진으로 ---------- */
+screens.toimg = () => choosePdf(startToImg);
+async function startToImg(src) {
+  current = 'toimg';
+  const { h, toast, busy } = C;
+  busy('불러오는 중...');
+  const jsDoc = await C.pdfjs.getDocument(C.pdfOpts(src.bytes.slice())).promise.catch(() => null);
+  busy('');
+  if (!jsDoc) { toast('열 수 없는 파일입니다'); return home(); }
+  const n = jsDoc.numPages;
+  let fmt = 'png', q = 2;
+  const inp = h('input', { type: 'text', placeholder: `예: 1-3, 5 (비우면 전체 ${n}쪽)` });
+  const out = h('div', { class: 'ed-info' });
+  const seg = (vals, cur, on) => {
+    const s = h('div', { class: 'seg' });
+    for (const [v, t] of vals) { const b = h('button', { class: String(v) === String(cur) ? 'on' : '' }, t); b.addEventListener('click', () => { for (const x of s.children) x.classList.toggle('on', x === b); on(v); upd(); }); s.append(b); }
+    return s;
+  };
+  const list = () => {
+    const raw = inp.value.trim();
+    if (!raw) return Array.from({ length: n }, (_, i) => i + 1);
+    const r = [];
+    for (const tok of raw.split(/[,\s]+/).filter(Boolean)) {
+      const m = tok.match(/^(\d*)-(\d*)$/) || tok.match(/^(\d+)$/);
+      if (!m) return null;
+      const a = m[2] === undefined ? Number(m[1]) : (m[1] === '' ? 1 : Number(m[1]));
+      const b = m[2] === undefined ? a : (m[2] === '' ? n : Number(m[2]));
+      if (a < 1 || b > n || a > b) return null;
+      for (let i = a; i <= b; i++) if (!r.includes(i)) r.push(i);
+    }
+    return r;
+  };
+  const upd = () => { const l = list(); out.textContent = !l ? `쪽 범위를 확인해 주세요 (1~${n}쪽 안에서)` : `${l.length}장을 ${fmt === 'png' ? 'PNG' : 'JPG'}로 저장합니다`; };
+  inp.addEventListener('input', upd);
+  frame(`PDF를 사진으로 · ${baseName(src.name)} (${n}쪽)`, home, [
+    h('div', { class: 'optrow' }, h('span', {}, '저장할 쪽'), inp),
+    h('div', { class: 'optrow' }, h('span', {}, '형식'), seg([['png', 'PNG (선명)'], ['jpg', 'JPG (용량 작게)']], fmt, (v) => { fmt = v; })),
+    h('div', { class: 'optrow' }, h('span', {}, '크기'), seg([[1.5, '보통'], [2, '선명'], [3, '아주 선명']], q, (v) => { q = Number(v); })),
+    out,
+    h('div', { class: 'row' }, h('button', { class: 'pri', style: 'flex:1', onclick: async () => {
+      const l = list();
+      if (!l || !l.length) { toast('쪽 범위를 확인해 주세요', 1400); return; }
+      if (l.length > 60) { toast('한 번에 60장까지만 저장할 수 있습니다'); return; }
+      busy('사진으로 바꾸는 중...');
+      try {
+        let k = 0;
+        const w = String(n).length;
+        for (const pn of l) {
+          busy(`사진으로 바꾸는 중 ${++k}/${l.length}`);
+          const pg = await jsDoc.getPage(pn), base = pg.getViewport({ scale: 1 });
+          let sc = q * (96 / 72);                          // 1.0 = 화면 96dpi 기준
+          const MAXPX = 4096; sc = Math.min(sc, MAXPX / Math.max(base.width, base.height));
+          const vp = pg.getViewport({ scale: sc });
+          const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+          const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+          await pg.render({ canvasContext: g, canvas: cv, viewport: vp, background: 'rgb(255,255,255)' }).promise;
+          const blob = await new Promise((r) => cv.toBlob(r, fmt === 'png' ? 'image/png' : 'image/jpeg', 0.92));
+          cv.width = cv.height = 0;
+          await C.deliverFile(new Uint8Array(await blob.arrayBuffer()), `${baseName(src.name)}_${String(pn).padStart(w, '0')}.${fmt}`, fmt === 'png' ? 'image/png' : 'image/jpeg');
+        }
+        toast(`${l.length}장을 저장했습니다`, 2400);
+      } catch (e) { console.error(e); toast('사진으로 바꾸지 못했습니다'); }
+      finally { busy(''); }
+    } }, '사진으로 저장')),
+  ]);
+  upd();
+}

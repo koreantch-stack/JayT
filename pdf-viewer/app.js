@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.2.2';
+const VERSION = '1.2.3';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
@@ -45,6 +45,7 @@ let pdf = null, pdfTask = null, pages = [], fit = 0, zoom = 1, docKey = '', docN
 const live = new Set();            // 캔버스를 가진 페이지
 let curJob = null, pumping = false;
 let uiHidden = false;
+let pinBar = !!store.get('pinBar', false);   // 필기 도구 줄 고정
 let vm = store.get('vm', 'scroll');   // 보기 방식: scroll(이어서) | single(한 쪽) | double(두 쪽)
 if (!['scroll', 'single', 'double'].includes(vm)) vm = 'scroll';
 let blk = 1, shown = [], sumAr = 0;    // 낱장 보기에서 지금 보이는 첫 쪽 번호, 보이는 쪽들, 모든 쪽의 높이/너비 합
@@ -125,6 +126,7 @@ async function openBuffer(buf, name, fromStore) {
   busy('');
   updateIndicator(); refresh(); saveRecent();
   if (keep) keepCopy(docKey, docName, keep);
+  if (pinBar && !an.on) { annoMode(true); setTool('hand'); }
   return true;
 }
 
@@ -703,7 +705,7 @@ let editorMod = null;
 const pdfOpts = (bytes) => ({ data: bytes, cMapUrl: LIB + 'cmaps/', cMapPacked: true, standardFontDataUrl: LIB + 'standard_fonts/', wasmUrl: LIB + 'wasm/', iccUrl: LIB + 'iccs/', isEvalSupported: false });
 function editCtx() {
   return {
-    h, svg, toast, busy, openSheet, closeSheet, LIB, deliverPdf, libCtx, pdfjs: pdfjsLib, pdfOpts,
+    h, svg, toast, busy, openSheet, closeSheet, LIB, deliverPdf, deliverFile, libCtx, pdfjs: pdfjsLib, pdfOpts,
     currentDoc: async () => (pdf && docBuf ? { name: docName, bytes: new Uint8Array(docBuf.slice(0)) } : null),
     openInViewer: async (bytes, name, o) => {
       const ok = await openBuffer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), name);
@@ -758,6 +760,11 @@ window.openNativePdf = async function () {
       const buf = await (await fetch('data:application/octet-stream;base64,' + b64)).arrayBuffer();
       out.set(new Uint8Array(buf), off);
       busy(`파일 받는 중 ${Math.round((off + len) / size * 100)}%`);
+    }
+    if (window.__editPick) {                 // 편집 화면이 파일을 기다리는 중이면 뷰어 대신 그쪽으로 넘긴다
+      const cb = window.__editPick; window.__editPick = null; busy('');
+      cb([new File([out], name, { type: 'application/pdf' })]);
+      return;
     }
     await openBuffer(out.buffer, name);
   } catch (e) { busy(''); toast('파일을 받지 못했습니다'); console.error(e); }
@@ -1493,7 +1500,17 @@ for (const b of annoBar.querySelectorAll('[data-tool]')) {
 }
 $('#aUndo').addEventListener('click', annoUndo);
 $('#aRedo').addEventListener('click', annoRedo);
-$('#aDone').addEventListener('click', () => annoMode(false));
+// 도구 줄 고정: 켜 두면 ✓를 눌러도 도구 줄이 남고(손 도구로 전환), 문서를 새로 열어도 계속 보인다
+function paintPin() { $('#aPin').classList.toggle('on', pinBar); $('#aPin').setAttribute('aria-pressed', String(pinBar)); }
+paintPin();
+$('#aPin').addEventListener('click', () => {
+  pinBar = !pinBar; store.set('pinBar', pinBar); paintPin();
+  toast(pinBar ? '도구 줄을 고정했습니다' : '고정을 풀었습니다', 1200);
+});
+$('#aDone').addEventListener('click', () => {
+  if (pinBar) { if (an.cur) annoAbort(); closePop(); setTool('hand'); saveAnno(); toast('저장했습니다 (도구 줄 고정 중)', 1000); }
+  else annoMode(false);
+});
 $('#aSave').addEventListener('click', exportPdf);
 $('#btnAnno').addEventListener('click', () => annoMode(!an.on));
 
@@ -1585,11 +1602,13 @@ function drawImageRect(page, img, x, y, w, h, P, degrees) {
   });
 }
 
-async function deliverPdf(bytes, name) {
+const deliverPdf = (bytes, name) => deliverFile(bytes, name, 'application/pdf');
+async function deliverFile(bytes, name, mime) {
   const N = window.PdfNative;
   if (N) {
-    if (typeof N.saveStart !== 'function') { toast('저장 기능이 들어간 새 앱을 설치해야 합니다'); return; }
-    if (!N.saveStart(name)) { toast('저장 공간을 열지 못했습니다'); return; }
+    const isPdf = mime === 'application/pdf';
+    if (typeof N.saveStart !== 'function' || (!isPdf && typeof N.saveStartMime !== 'function')) { toast('저장 기능이 들어간 새 앱을 설치해야 합니다'); return; }
+    if (!(isPdf ? N.saveStart(name) : N.saveStartMime(name, mime))) { toast('저장 공간을 열지 못했습니다'); return; }
     const CH = 3 * 256 * 1024;
     for (let off = 0; off < bytes.length; off += CH) {
       const part = bytes.subarray(off, Math.min(bytes.length, off + CH));
@@ -1603,7 +1622,7 @@ async function deliverPdf(bytes, name) {
     toast(`다운로드 폴더에 저장했습니다\n${saved}`, 4200);
     return;
   }
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
   const a = h('a', { href: url, download: name });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);

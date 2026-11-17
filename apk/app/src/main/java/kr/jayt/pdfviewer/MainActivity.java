@@ -76,15 +76,21 @@ public class MainActivity extends Activity {
         /** 필기를 합친 PDF를 다운로드 폴더에 저장 (안드로이드 10 이상) */
         @JavascriptInterface
         public boolean saveStart(String name) {
+            return saveStartMime(name, "application/pdf");
+        }
+
+        @JavascriptInterface
+        public boolean saveStartMime(String name, String mime) {
             synchronized (lock) {
                 closeSave(false);
                 if (Build.VERSION.SDK_INT < 29) return false;
                 try {
-                    String n = name == null ? "문서.pdf" : name.replaceAll("[\\\\/:*?\"<>|]", "_");
-                    if (!n.toLowerCase().endsWith(".pdf")) n += ".pdf";
+                    boolean isPdf = mime == null || mime.equals("application/pdf");
+                    String n = name == null ? (isPdf ? "문서.pdf" : "파일") : name.replaceAll("[\\\\/:*?\"<>|]", "_");
+                    if (isPdf && !n.toLowerCase().endsWith(".pdf")) n += ".pdf";
                     ContentValues v = new ContentValues();
                     v.put(MediaStore.Downloads.DISPLAY_NAME, n);
-                    v.put(MediaStore.Downloads.MIME_TYPE, "application/pdf");
+                    v.put(MediaStore.Downloads.MIME_TYPE, isPdf ? "application/pdf" : mime);
                     v.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
                     v.put(MediaStore.Downloads.IS_PENDING, 1);
                     saveUri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);

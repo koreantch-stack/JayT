@@ -1,5 +1,6 @@
 // 앱 전체에서 쓰는 아이콘 (24x24, 선 그림). 색은 글자색을 따라간다.
 const P = {
+  pin: '<path d="M9 3h6l-1 6 3 3v1.5H7V12l3-3z"/><path d="M12 13.5V21"/>',
   home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
   'view-scroll': '<rect x="6" y="2.5" width="12" height="8" rx="1.2"/><rect x="6" y="13.5" width="12" height="8" rx="1.2"/>',
