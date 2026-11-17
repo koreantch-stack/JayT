@@ -363,7 +363,7 @@ async function startSplit(src) {
           (await o.copyPages(d, Array.from({ length: b - a + 1 }, (_, i) => a - 1 + i))).forEach((p) => o.addPage(p));
           await C.deliverPdf(await o.save(), `${baseName(src.name)}_${a === b ? a : `${a}-${b}`}.pdf`, true);
         }
-        toast(`${g.length}개 파일을 저장했습니다`, 2200);
+        toast(`${g.length}개 파일을 다운로드 폴더에 저장했습니다`, 4200);
       } catch (e) { console.error(e); toast('나누지 못했습니다'); }
       finally { busy(''); }
     } }, '나눠서 저장')),
@@ -534,7 +534,7 @@ async function startToImg(src) {
           cv.width = cv.height = 0;
           await C.deliverFile(new Uint8Array(await blob.arrayBuffer()), `${baseName(src.name)}_${String(pn).padStart(w, '0')}.${fmt}`, fmt === 'png' ? 'image/png' : 'image/jpeg');
         }
-        toast(`${l.length}장을 저장했습니다`, 2400);
+        toast(`${l.length}장을 다운로드 폴더에 저장했습니다`, 4200);
       } catch (e) { console.error(e); toast('사진으로 바꾸지 못했습니다'); }
       finally { busy(''); }
     } }, '사진으로 저장')),

@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
