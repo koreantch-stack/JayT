@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.2.3';
+const VERSION = '1.3.0';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
@@ -728,6 +728,7 @@ $('#btnMore').addEventListener('click', () => openSheet(() => [
   h('div', { class: 'row' }, h('button', { class: 'pri', onclick: () => { closeSheet(); pickFile(); } }, 'PDF 열기')),
   h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openEditorScreen(); } }, '편집 (쪽 정리·합치기·나누기…)')),
   h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); openInfo(); } }, '문서 정보')),
+  h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { closeSheet(); checkUpdate(true); } }, '앱 업데이트 확인')),
 ]));
 $('#btnHome').addEventListener('click', goHome);
 function goHome() {
@@ -1628,6 +1629,38 @@ async function deliverFile(bytes, name, mime) {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
   toast('저장했습니다: ' + name);
 }
+
+
+/* ---------- 앱 업데이트 알림 (APK 안에서만) ---------- */
+const REL_API = 'https://api.github.com/repos/koreantch-stack/JayT/releases/tags/apk-latest';
+async function checkUpdate(manual) {
+  const N = window.PdfNative;
+  if (!N || typeof N.versionCode !== 'function' || typeof N.installUpdate !== 'function') {
+    if (manual) toast(N ? '이 앱은 옛 버전이라 새 앱을 한 번 직접 설치해야 합니다' : '앱 안에서만 쓸 수 있습니다', 2600);
+    return;
+  }
+  try {
+    const cur = Number(N.versionCode());
+    const r = await fetch(REL_API, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!r.ok) throw new Error('release ' + r.status);
+    const j = await r.json();
+    const m = /빌드 번호\s*(\d+)/.exec(j.body || '');
+    const latest = m ? Number(m[1]) : 0;
+    const asset = (j.assets || []).find((x) => /\.apk$/i.test(x.name));
+    if (!latest || !asset) throw new Error('release info');
+    if (latest <= cur) { if (manual) toast('이미 최신 앱입니다', 1800); return; }
+    if (!manual && store.get('skipBuild', 0) === latest) return;
+    openSheet(() => [
+      h('h3', {}, '새 앱이 있습니다'),
+      h('p', {}, '새 버전을 내려받아 설치할 수 있습니다. 설치해도 보관한 문서와 필기는 그대로 남습니다.'),
+      h('div', { class: 'row' }, h('button', { class: 'pri', onclick: () => { closeSheet(); busy('내려받는 중...'); N.installUpdate(asset.browser_download_url); } }, '설치')),
+      h('div', { class: 'row' }, h('button', { class: 'sec', onclick: () => { store.set('skipBuild', latest); closeSheet(); } }, '나중에')),
+    ]);
+  } catch (e) { console.warn('업데이트 확인 실패', e); if (manual) toast('업데이트를 확인하지 못했습니다'); }
+}
+window.onUpdateProgress = (p) => { busy(p >= 0 ? `내려받는 중 ${p}%` : '내려받는 중...'); if (p >= 100) setTimeout(() => busy(''), 2500); };
+window.onUpdateFail = (needPermission) => { busy(''); if (!needPermission) toast('내려받거나 설치하지 못했습니다. 잠시 뒤 다시 눌러 주세요', 3000); };
+setTimeout(() => checkUpdate(false), 3500);
 
 // 시험·점검용으로 바깥에서 상태를 볼 수 있게 노출
 window.__pdfv = { get zoom() { return zoom; }, get pages() { return pages; }, get live() { return live; }, setZoom, refresh, goPage, openBuffer, an, annoMode, annoSaveNow: () => saveAnno(), exportPdf, setViewMode, pageStep, toggleFit, layoutAt, get vm() { return vm; }, get blk() { return blk; }, get fit() { return fit; } };

@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.provider.Settings;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -23,7 +25,12 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -71,8 +78,73 @@ public class MainActivity extends Activity {
         return result;
     }
 
+    /** 내려받은 새 앱을 설치 화면으로 넘긴다. "이 앱에서 설치 허용"이 꺼져 있으면 그 설정 화면부터 연다. */
+    private void launchInstaller() {
+        try {
+            if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+                Toast.makeText(this, "설치를 허용해 주세요. 허용한 뒤 뒤로 가서 업데이트를 다시 눌러 주세요", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+                web.evaluateJavascript("window.onUpdateFail&&window.onUpdateFail(true)", null);
+                return;
+            }
+            Uri u = Uri.parse("content://" + UpdateProvider.AUTH + "/PdfDokkaebi.apk");
+            Intent i = new Intent(Intent.ACTION_VIEW);
+            i.setDataAndType(u, "application/vnd.android.package-archive");
+            i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            Toast.makeText(this, "설치 화면을 열지 못했습니다", Toast.LENGTH_LONG).show();
+            web.evaluateJavascript("window.onUpdateFail&&window.onUpdateFail()", null);
+        }
+    }
+
     /** 웹앱에서 window.PdfNative 로 보이는 통로 */
     private class Bridge {
+        /** 지금 설치된 앱의 빌드 번호 (새 앱이 있는지 비교하는 데 씀) */
+        @JavascriptInterface
+        public int versionCode() {
+            try {
+                PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
+                return Build.VERSION.SDK_INT >= 28 ? (int) pi.getLongVersionCode() : pi.versionCode;
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+
+        /** 새 앱을 내려받아 설치 화면을 띄운다. 이 저장소의 릴리스 주소만 받는다. */
+        @JavascriptInterface
+        public void installUpdate(final String url) {
+            if (url == null || !url.startsWith("https://github.com/koreantch-stack/JayT/releases/download/")) return;
+            new Thread(() -> {
+                try {
+                    HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+                    c.setConnectTimeout(15000);
+                    c.setReadTimeout(30000);
+                    c.setInstanceFollowRedirects(true);
+                    int total = c.getContentLength();
+                    File f = UpdateProvider.apkFile(MainActivity.this);
+                    try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(f)) {
+                        byte[] buf = new byte[64 * 1024];
+                        long got = 0;
+                        int last = -1, n;
+                        while ((n = in.read(buf)) > 0) {
+                            out.write(buf, 0, n);
+                            got += n;
+                            int pct = total > 0 ? (int) (got * 100 / total) : -1;
+                            if (pct != last) {
+                                last = pct;
+                                final int pp = pct;
+                                runOnUiThread(() -> web.evaluateJavascript("window.onUpdateProgress&&window.onUpdateProgress(" + pp + ")", null));
+                            }
+                        }
+                    }
+                    runOnUiThread(() -> launchInstaller());
+                } catch (Exception e) {
+                    runOnUiThread(() -> web.evaluateJavascript("window.onUpdateFail&&window.onUpdateFail()", null));
+                }
+            }).start();
+        }
+
         /** 필기를 합친 PDF를 다운로드 폴더에 저장 (안드로이드 10 이상) */
         @JavascriptInterface
         public boolean saveStart(String name) {
