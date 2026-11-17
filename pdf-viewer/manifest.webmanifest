@@ -1,7 +1,7 @@
 {
-  "name": "PDF 뷰어",
-  "short_name": "PDF 뷰어",
-  "description": "광고 없는 PDF 뷰어",
+  "name": "PDF 도깨비",
+  "short_name": "PDF 도깨비",
+  "description": "광고 없는 PDF 뷰어·편집기",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

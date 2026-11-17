@@ -6,7 +6,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="PDF 뷰어"
+        android:label="PDF 도깨비"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
 
@@ -30,7 +30,7 @@
                 <data android:scheme="file" android:mimeType="application/pdf" />
             </intent-filter>
 
-            <!-- 공유 메뉴에서 PDF 뷰어를 골랐을 때 -->
+            <!-- 공유 메뉴에서 PDF 도깨비를 골랐을 때 -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

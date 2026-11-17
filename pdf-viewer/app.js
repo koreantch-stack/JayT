@@ -3,7 +3,7 @@ import { svg, fillIcons } from './icons.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./lib/pdf.worker.min.mjs', import.meta.url).href;
 const LIB = new URL('./lib/', import.meta.url).href;
-const VERSION = '1.2.0';
+const VERSION = '1.2.1';
 
 const $ = (s) => document.querySelector(s);
 const scroller = $('#scroller'), pagesEl = $('#pages'), topbar = $('#topbar');
@@ -548,7 +548,7 @@ function openGoto() {
 
 function openInfo() {
   openSheet(() => [
-    h('h3', {}, `PDF 뷰어 ${VERSION}`),
+    h('h3', {}, `PDF 도깨비 ${VERSION}`),
     h('p', {}, '두 번 탭하면 확대·원래 크기로 바뀌고, 두 손가락으로 벌리면 원하는 만큼 확대됩니다. 확대할 때마다 그 배율로 다시 그려서 글자가 흐려지지 않습니다.'),
     h('p', {}, '한 번 탭하면 위아래 메뉴가 숨겨지거나 나타납니다. 읽던 쪽은 문서마다 기억합니다.'),
     h('p', {}, '스캔본이나 사진으로 만든 PDF는 원본 해상도 이상으로는 선명해지지 않습니다.'),
@@ -728,7 +728,7 @@ function goHome() {
   if (an.on) annoMode(false);
   savePos(); closeDoc();
   scroller.hidden = true; emptyEl.hidden = false;
-  document.body.classList.add('noDoc'); document.title = 'PDF 뷰어';
+  document.body.classList.add('noDoc'); document.title = 'PDF 도깨비';
   renderRecent();
 }
 $('#btnDark').addEventListener('click', () => {

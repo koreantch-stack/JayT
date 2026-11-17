@@ -1,4 +1,4 @@
-name: PDF 뷰어 APK 만들기
+name: PDF 도깨비 APK 만들기
 
 on:
   workflow_dispatch:
@@ -39,7 +39,7 @@ jobs:
         run: |
           gh release delete apk-latest --yes --cleanup-tag || true
           gh release create apk-latest PdfViewer.apk \
-            --title "PDF 뷰어 APK (최신)" \
+            --title "PDF 도깨비 APK (최신)" \
             --notes "폰에서 PdfViewer.apk 를 눌러 설치하세요. 빌드 번호 ${{ github.run_number }}"
 
       - uses: actions/upload-artifact@v4
