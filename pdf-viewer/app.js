@@ -11,8 +11,8 @@ const emptyEl = $('#empty'), busyEl = $('#busy'), toastEl = $('#toast');
 const sheet = $('#sheet'), sheetBody = $('#sheetBody'), fileInput = $('#file');
 
 const dpr = Math.min(window.devicePixelRatio || 1, 3);
-const MAX_PIXELS = 8e6;          // 캔버스 한 장의 최대 화소 수 (폰 메모리 보호)
-const MIN_Z = 0.5, MAX_Z = 8;
+const MAX_PIXELS = 6e6;          // 캔버스 한 장의 최대 화소 수 (폰 메모리 보호)
+const MIN_Z = 1, MAX_Z = 8;      // 1 = 화면 폭에 맞춤
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 const store = {
@@ -173,12 +173,13 @@ function updateIndicator() {
 
 /* ---------- 확대 ---------- */
 let pillTimer = 0;
-function showPill() {
-  zoomPill.textContent = Math.round(zoom * 100) + '%'; zoomPill.hidden = false;
+function showPill(z = zoom) {
+  zoomPill.textContent = Math.round(z * 100) + '%'; zoomPill.hidden = false;
   clearTimeout(pillTimer); pillTimer = setTimeout(() => { zoomPill.hidden = true; }, 900);
 }
 
-// cx, cy: 화면 위 기준점(스크롤 영역 안 좌표). 그 점 아래의 내용이 제자리에 있도록 확대한다.
+// 키보드·마우스 휠용: 배율을 바로 바꾼다 (손가락 확대는 아래 제스처 방식)
+// cx, cy: 화면 위 기준점. 그 점 아래의 내용이 제자리에 있도록 확대한다.
 function setZoom(z, cx, cy) {
   z = clamp(z, MIN_Z, MAX_Z);
   if (Math.abs(z - zoom) < 1e-4) return;
@@ -190,14 +191,60 @@ function setZoom(z, cx, cy) {
   showPill();
 }
 
+// 손가락 확대: 움직이는 동안은 화면을 GPU로 늘이기만 하고(레이아웃·다시 그리기 없음),
+// 손을 떼는 순간 한 번만 배율을 확정한 뒤 그 배율로 선명하게 다시 그린다.
+let gz = null, gzRaf = 0, gzTimer = 0;
+function gestureBegin(mx, my) {
+  if (curJob) { try { curJob.task.cancel(); } catch { /* 무시 */ } }
+  // P: 첫 쪽 위의 고정 여백. 이 여백은 확대해도 늘어나지 않으므로 기준 높이로 쓴다.
+  const P = pages.length ? pages[0].el.offsetTop : 0;
+  gz = { z0: zoom, sx: scroller.scrollLeft + mx, sy: scroller.scrollTop + my, mx0: mx, my0: my, mx, my, s: 1, P };
+  pagesEl.style.transition = 'none';
+  pagesEl.style.transformOrigin = `${gz.sx}px ${gz.P}px`;
+  pagesEl.style.willChange = 'transform';
+}
+// 손가락 밑의 내용이 손가락을 따라가도록 이동량을 계산한다
+function gzTransform() {
+  const tx = gz.mx - gz.mx0;
+  const ty = (gz.my - gz.my0) + (gz.sy - gz.P) * (1 - gz.s);
+  return `translate(${tx}px, ${ty}px) scale(${gz.s})`;
+}
+function gestureApply() {
+  gzRaf = 0;
+  if (!gz) return;
+  pagesEl.style.transform = gzTransform();
+  showPill(gz.z0 * gz.s);
+}
+function gestureUpdate(s, mx, my) {
+  if (!gz) return;
+  gz.s = clamp(s, MIN_Z / gz.z0, MAX_Z / gz.z0); gz.mx = mx; gz.my = my;
+  if (!gzRaf) gzRaf = requestAnimationFrame(gestureApply);
+}
+function gestureEnd() {
+  if (!gz) return;
+  clearTimeout(gzTimer); cancelAnimationFrame(gzRaf); gzRaf = 0;
+  const g = gz; gz = null;
+  const r = clamp(g.z0 * g.s, MIN_Z, MAX_Z) / g.z0;
+  pagesEl.style.transition = 'none';
+  pagesEl.style.transform = ''; pagesEl.style.willChange = ''; pagesEl.style.transformOrigin = '';
+  zoom = g.z0 * r; applyWidth();
+  scroller.scrollLeft = g.sx * r - g.mx;
+  scroller.scrollTop = g.P + (g.sy - g.P) * r - g.my;
+  showPill(); updateIndicator(); scheduleRefresh(60, true); savePosSoon();
+}
+
+// 두 번 탭 확대: 변환 애니메이션으로 부드럽게
 function animateZoom(target, cx, cy) {
-  const from = zoom, t0 = performance.now(), dur = 160;
-  const step = (t) => {
-    const k = clamp((t - t0) / dur, 0, 1), e = 1 - Math.pow(1 - k, 3);
-    setZoom(from + (target - from) * e, cx, cy);
-    if (k < 1) requestAnimationFrame(step); else scheduleRefresh(0, true);
-  };
-  requestAnimationFrame(step);
+  if (gz) return;
+  target = clamp(target, MIN_Z, MAX_Z);
+  if (Math.abs(target - zoom) < 1e-3) return;
+  gestureBegin(cx, cy);
+  pagesEl.style.transition = 'transform .18s ease-out';
+  void pagesEl.offsetWidth;            // 변환이 현재 상태에서 출발하도록 반영
+  gz.s = target / zoom;
+  pagesEl.style.transform = gzTransform();
+  showPill(target);
+  gzTimer = setTimeout(gestureEnd, 210);
 }
 
 /* ---------- 그리기 ---------- */
@@ -238,7 +285,7 @@ function plan(p) {
   if (vx1 <= vx0 || vy1 <= vy0) return null;      // 큰 확대 상태에서는 보이는 페이지만 그림
   if (inf && !inf.full && Math.abs(inf.W - W) / W < 0.02 &&
       inf.x <= vx0 + 1 && inf.y <= vy0 + 1 && inf.x + inf.w >= vx1 - 1 && inf.y + inf.h >= vy1 - 1) return null;
-  const mx = (vx1 - vx0) * 0.35, my = (vy1 - vy0) * 0.35;
+  const mx = (vx1 - vx0) * 0.2, my = (vy1 - vy0) * 0.2;
   const x = Math.max(0, Math.floor(vx0 - mx)), y = Math.max(0, Math.floor(vy0 - my));
   const x1 = Math.min(W, Math.ceil(vx1 + mx)), y1 = Math.min(H, Math.ceil(vy1 + my));
   return { x, y, w: x1 - x, h: y1 - y, W, H, full: false };
@@ -250,7 +297,7 @@ function freeCanvas(p) {
 }
 
 function refresh() {
-  if (!pdf) return;
+  if (!pdf || gz) return;
   // 확대 배율이 바뀌어 낡은 그리기는 중단
   if (curJob && Math.abs(curJob.p.el.getBoundingClientRect().width - curJob.r.W) > 1) {
     try { curJob.task.cancel(); } catch { /* 무시 */ }
@@ -270,10 +317,12 @@ async function pump() {
   pumping = true;
   try {
     for (;;) {
+      if (gz) break;
       let job = null;
       for (const p of wanted()) { const r = plan(p); if (r) { job = { p, r }; break; } }
       if (!job) break;
       await renderJob(job);
+      await new Promise((r) => setTimeout(r, 0));   // 사이사이 터치 입력에 양보
     }
   } finally { pumping = false; }
 }
@@ -621,8 +670,10 @@ const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
 
 scroller.addEventListener('touchstart', (e) => {
   if (e.touches.length === 2) {
-    const [a, b] = e.touches;
-    tp = { mode: 'pinch', d0: dist2(a, b) || 1, z0: zoom, mx: (a.clientX + b.clientX) / 2, my: (a.clientY + b.clientY) / 2 };
+    if (gz) gestureEnd();
+    const [a, b] = e.touches, rc = scroller.getBoundingClientRect();
+    tp = { mode: 'pinch', d0: dist2(a, b) || 1, rl: rc.left, rt: rc.top };
+    gestureBegin((a.clientX + b.clientX) / 2 - rc.left, (a.clientY + b.clientY) / 2 - rc.top);
     clearTimeout(tapTimer); lastTap.t = 0;
   } else if (e.touches.length === 1) {
     const t = e.touches[0];
@@ -635,11 +686,7 @@ scroller.addEventListener('touchmove', (e) => {
   if (tp.mode === 'pinch' && e.touches.length === 2) {
     if (e.cancelable) e.preventDefault();
     const [a, b] = e.touches;
-    const mx = (a.clientX + b.clientX) / 2, my = (a.clientY + b.clientY) / 2;
-    const rc = scroller.getBoundingClientRect();
-    setZoom(tp.z0 * dist2(a, b) / tp.d0, tp.mx - rc.left, tp.my - rc.top);
-    scroller.scrollLeft += tp.mx - mx; scroller.scrollTop += tp.my - my;
-    tp.mx = mx; tp.my = my;
+    gestureUpdate(dist2(a, b) / tp.d0, (a.clientX + b.clientX) / 2 - tp.rl, (a.clientY + b.clientY) / 2 - tp.rt);
   } else if (tp.mode === 'tap') {
     const t = e.touches[0];
     if (Math.hypot(t.clientX - tp.x, t.clientY - tp.y) > 10) tp.moved = true;
@@ -649,11 +696,11 @@ scroller.addEventListener('touchmove', (e) => {
 scroller.addEventListener('touchend', (e) => {
   if (tp && tp.mode === 'tap' && !tp.moved && Date.now() - tp.t < 350 && e.touches.length === 0) handleTap(tp.x, tp.y);
   if (tp && tp.mode === 'pinch') {
-    if (e.touches.length === 0) { scheduleRefresh(120, true); tp = null; }
-    else { tp = { mode: 'none' }; scheduleRefresh(120, true); }
+    gestureEnd();
+    tp = e.touches.length === 0 ? null : { mode: 'none' };
   } else if (e.touches.length === 0) tp = null;
 }, { passive: true });
-scroller.addEventListener('touchcancel', () => { tp = null; }, { passive: true });
+scroller.addEventListener('touchcancel', () => { gestureEnd(); tp = null; }, { passive: true });
 
 function handleTap(x, y) {
   const now = Date.now();
